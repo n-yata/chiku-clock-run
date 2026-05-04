@@ -36,6 +36,17 @@
 
 ---
 
+## 音声用語
+
+| 用語 | 英語 | 定義 |
+|------|------|------|
+| SE | Sound Effect | ゲーム内イベント（ジャンプ・コイン取得・踏みつけ・ミス・ゴール）に対応する効果音。`AudioManager.playSe()` で再生 |
+| BGM | Background Music | ステージ中ループ再生されるバックグラウンドミュージック。16 ステップの矩形波アルペジオ。`AudioManager.startBgm()` / `stopBgm()` で制御 |
+| AudioManager | AudioManager | `src/audio/AudioManager.ts` に実装された音声合成クラス。Web Audio API を使い `OscillatorNode` / `GainNode` の短命グラフで SE と BGM を生成する。Phaser に非依存 |
+| AudioContext unlock | AudioContext unlock | iOS Safari では最初のユーザー入力イベントのコールスタック内で `AudioContext` を生成・resume しないと音が出ない制約がある。`AudioManager.unlock()` が最初のキー押下 / タップで呼ばれることでこの制約を回避する |
+
+---
+
 ## ソフトウェア用語
 
 | 用語 | 英語 | 定義 |
@@ -89,7 +100,8 @@
 | `TEX_KEY` | テクスチャキー文字列の定数オブジェクト。`TEX_KEY.player` / `TEX_KEY.ground` 等でキー文字列を参照 |
 | `STAGE_01` | ステージ 1 の定義定数（`StageDefinition` 型）。`src/stages/stage01.ts` で定義 |
 | `FALL_THRESHOLD_Y` | プレイヤーがこの Y 座標を超えるとミス（落下）判定。`VIEWPORT_HEIGHT + 200` |
-| `TOUCH_HOLD_MS` | タッチが「長押し（移動）」と判定されるまでの時間（ms）。短タップはジャンプとして扱う |
+| `TOUCH_SLIDE_THRESHOLD_PX` | 左ゾーンのスライド判定しきい値（px）。ベース X からこの値を超えた時点で左右移動を開始する |
+| `TOUCH_ZONE_SPLIT_RATIO` | タッチゾーン分割比率（0.5 = 画面中央）。左ゾーン（スライド移動）/ 右ゾーン（ジャンプ）を分ける |
 | `STOMP_TOLERANCE_PX` | 踏みつけ判定のトレランス（px）。`player.bottom <= enemy.top + STOMP_TOLERANCE_PX` |
 | `STOMP_BOUNCE_VELOCITY` | 踏みつけ成功時にプレイヤーへ与える Y 方向の反発速度 |
 | `VITE_BASE_PATH` | GitHub Pages の配信パス（`/<repo>/`）を設定する環境変数。`vite.config.ts` で参照 |

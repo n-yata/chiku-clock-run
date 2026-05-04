@@ -27,6 +27,8 @@
 - パッケージ管理: npm
 - 主要ライブラリ:
   - `phaser` — 2D ゲームエンジン本体（Scene / Physics / Input / Camera）
+- 音声レイヤ: Web Audio API（ブラウザ標準、追加依存なし）
+  - `AudioManager`（`src/audio/AudioManager.ts`）— SE 5 種 + BGM ループを `OscillatorNode` / `GainNode` の短命グラフで合成。外部音声ファイル不使用
 
 ### バックエンド
 
@@ -76,7 +78,7 @@
 | 描画 fps | 60 維持 | ローカルビルド OK、ブラウザ実測は要計測 |
 | 初回ロード時間 | < 5 秒（GitHub Pages, モダン回線, キャッシュなし） | 要 Pages 環境計測 |
 | 入力レイテンシ | < 100 ms（体感） | 要計測 |
-| バンドルサイズ（`dist/assets/*.js`） | < 1.5 MB | 1,490 kB（gzip 343 kB, v0.2 時点） |
+| バンドルサイズ（`dist/assets/*.js`） | < 1.5 MB | 1,494 kB（gzip 344 kB, v0.3 時点） |
 
 ---
 
@@ -108,7 +110,8 @@
 
 - v0.2（実装済み）: 敵キャラクター 4 体（踏みつけ撃破 / 段差端反転 AI）・コイン 15 枚・スコア HUD・ミス演出（白フラッシュ → `window.location.reload()`）
 - モバイル操作改善（実装済み）: 左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理。縦向き時の横向き促進オーバーレイ（CSS `@media orientation`）・ピンチズーム無効化
-- v0.3 以降: BGM / SE、複数ステージ、タイトル画面、ライフ / パワーアップ
+- v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）+ 16 ステップアルペジオ BGM。iOS Safari unlock 対応。バンドルサイズ +4 kB のみ
+- v0.4 以降: 複数ステージ、タイトル画面、ライフ / パワーアップ、音量調整 UI
 - 複数ステージ追加時: `src/stages/` にファイル追加 + ステージ選択 UI
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
 - アセット差し替え: `BootScene` の `generateTexture()` を `this.load.image()` に置換するだけで対応可（`TEX_KEY` で抽象化済み）
