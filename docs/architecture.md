@@ -76,7 +76,7 @@
 | 描画 fps | 60 維持 | ローカルビルド OK、ブラウザ実測は要計測 |
 | 初回ロード時間 | < 5 秒（GitHub Pages, モダン回線, キャッシュなし） | 要 Pages 環境計測 |
 | 入力レイテンシ | < 100 ms（体感） | 要計測 |
-| バンドルサイズ（`dist/assets/*.js`） | < 1.5 MB | 1,485 kB（gzip 342 kB） |
+| バンドルサイズ（`dist/assets/*.js`） | < 1.5 MB | 1,490 kB（gzip 343 kB, v0.2 時点） |
 
 ---
 
@@ -106,7 +106,8 @@
 
 ## 拡張・将来課題
 
-- v0.2 以降: 敵キャラクター・コイン・スコア・BGM/SE
+- v0.2（実装済み）: 敵キャラクター 4 体（踏みつけ撃破 / 段差端反転 AI）・コイン 15 枚・スコア HUD・ミス演出（白フラッシュ → `window.location.reload()`）
+- v0.3 以降: BGM / SE、複数ステージ、タイトル画面、ライフ / パワーアップ
 - 複数ステージ追加時: `src/stages/` にファイル追加 + ステージ選択 UI
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
 - アセット差し替え: `BootScene` の `generateTexture()` を `this.load.image()` に置換するだけで対応可（`TEX_KEY` で抽象化済み）

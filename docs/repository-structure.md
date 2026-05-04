@@ -42,10 +42,10 @@ mario-game/
 | ディレクトリ / ファイル | 役割 |
 |----------------------|------|
 | `src/main.ts` | `Phaser.Game` 起動。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| `src/scenes/BootScene.ts` | `Graphics.generateTexture()` でプレイヤー / 地面 / ゴールのプレースホルダを生成し `GameScene` へ遷移 |
-| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 落下リスポーン / ゴール Overlap / R リスタート |
-| `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・寸法・閾値・テクスチャキーの単一集約点 |
-| `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G'` で構成された 2 次元文字列配列） |
+| `src/scenes/BootScene.ts` | `Graphics.generateTexture()` でプレイヤー / 地面 / ゴール / 敵 / コインのプレースホルダを生成し `GameScene` へ遷移 |
+| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI（壁・段差端反転）/ コイン取得 / スコア HUD / ミス演出 + 完全リスタート / ゴール Overlap / R リスタート |
+| `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・敵 / コイン物理・ミス演出・HUD スタイル・寸法・閾値・テクスチャキーの単一集約点 |
+| `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定 |
 | `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用） |
 | `docs/` | 永続的ドキュメント（プロダクト要求・設計・技術仕様・開発ガイドライン）。v0.1 では本ファイル + `architecture.md` のみ |
@@ -62,8 +62,8 @@ mario-game/
 
 - 永続的ドキュメントは `docs/` 直下に配置
 - 作業単位のドキュメントは `.steering/[YYYYMMDD]-[開発タイトル]/` に配置
-- 物理定数・閾値・テクスチャキーは `src/config/gameConfig.ts` に集約。シーンファイルにマジックナンバー直書き禁止
-- ステージデータは `src/stages/` に 1 ファイル 1 ステージで配置（v0.1 は `stage01.ts` のみ）
+- 物理定数・閾値・テクスチャキー・HUD スタイル文字列は `src/config/gameConfig.ts` に集約。シーンファイルにマジックナンバー / 色 / HUD 文言の直書き禁止
+- ステージデータは `src/stages/` に 1 ファイル 1 ステージで配置（v0.2 時点で `stage01.ts` のみ）
 - 機密情報を含むファイル（`.env`, シークレット鍵 等）は `.gitignore` 対象（本案件では発生しない想定）
 
 ---
