@@ -1,0 +1,49 @@
+{
+  "name": "mario-game",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+
+  // ホストの Claude Code グローバル設定をマウント（メモリ書き込みが必要なので read-write）
+  // session-env はコンテナローカル tmpfs で上書き（ホスト側の権限問題を回避）
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "target=/home/vscode/.claude/session-env,type=tmpfs,tmpfs-mode=1777"
+  ],
+
+  // コンテナ起動前（ホスト側）: .claude ディレクトリの権限をコンテナ内 vscode(1000) に合わせる
+  "initializeCommand": ["bash", "-c", "mkdir -p \"$HOME/.claude/session-env\" && chmod 700 \"$HOME/.claude\" && chmod 777 \"$HOME/.claude/session-env\""],
+
+  // コンテナ初回作成後に依存関係をインストール
+  "postCreateCommand": "npm install",
+
+  // セキュリティ: 非 root ユーザーで実行
+  "remoteUser": "vscode",
+
+  // 権限昇格を禁止・不要な capability をドロップ
+  "runArgs": [
+    "--security-opt=no-new-privileges:true",
+    "--cap-drop=ALL",
+    "--cap-add=CHOWN",
+    "--cap-add=SETUID",
+    "--cap-add=SETGID"
+  ],
+
+  // Vite dev server / preview 用ポート
+  "forwardPorts": [5173, 4173],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "Anthropic.claude-code"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}
