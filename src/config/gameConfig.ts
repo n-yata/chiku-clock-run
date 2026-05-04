@@ -18,7 +18,7 @@ export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
 
 export const BG_COLOR = '#5c94fc';
 
-export const PLAYER_COLOR = 0xff3b30;
+export const PLAYER_COLOR = 0xc0392b;
 export const GROUND_COLOR = 0x8b4513;
 export const GOAL_COLOR = 0xffd700;
 

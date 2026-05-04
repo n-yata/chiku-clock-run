@@ -210,11 +210,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fullRestart(): void {
-    // scene.restart() 経由のリセットでは 2 回目以降に static body のサイズが
-    // 取れず player が地面を貫通する不具合があったため、BootScene を経由する
-    // 完全再構築に切り替えた。BootScene → GameScene の流れでテクスチャ・物理
-    // ワールド・入力プラグインがすべて再初期化される。
-    this.scene.start('BootScene');
+    // scene.restart() / scene.start('BootScene') のいずれでも 2 回目以降の
+    // 床貫通バグが再現したため、最終手段として window.location.reload() で
+    // ページ全体を再ロードする。Phaser のシーンマネージャ・物理ワールド・
+    // テクスチャマネージャがすべて初期状態から再構築される。
+    // 副作用: リスタートに数百 ms 〜 1 秒程度のロード待ちが発生する。
+    window.location.reload();
   }
 
   private onGoalHit(): void {
