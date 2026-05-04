@@ -64,3 +64,75 @@ export const HUD_STROKE_THICKNESS = 4;
 export const HUD_COIN_LABEL = 'コイン';
 export const HUD_COIN_X = 16;
 export const HUD_COIN_Y = 40;
+
+// --- v0.3: BGM / SE ---
+
+export type SeWaveform = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+export interface SeStep {
+  freqStart: number;
+  freqEnd: number;
+  durationSec: number;
+  attackSec: number;
+  peakGain: number;
+  waveform: SeWaveform;
+  /** 前ステップ開始からの相対オフセット秒。0 で同時発火。 */
+  offsetSec: number;
+}
+
+export interface SeDefinition {
+  steps: ReadonlyArray<SeStep>;
+}
+
+export const AUDIO_MASTER_GAIN = 0.5;
+export const AUDIO_BGM_GAIN = 0.6;
+
+export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal', SeDefinition> = {
+  jump: {
+    steps: [
+      { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
+    ]
+  },
+  coin: {
+    steps: [
+      { freqStart: 988,  freqEnd: 988,  durationSec: 0.07, attackSec: 0.002, peakGain: 0.3, waveform: 'square', offsetSec: 0 },
+      { freqStart: 1568, freqEnd: 1568, durationSec: 0.07, attackSec: 0.002, peakGain: 0.3, waveform: 'square', offsetSec: 0.07 }
+    ]
+  },
+  stomp: {
+    steps: [
+      { freqStart: 220, freqEnd: 110, durationSec: 0.10, attackSec: 0.002, peakGain: 0.4, waveform: 'square', offsetSec: 0 }
+    ]
+  },
+  miss: {
+    steps: [
+      { freqStart: 330, freqEnd: 110, durationSec: 0.50, attackSec: 0.010, peakGain: 0.35, waveform: 'sawtooth', offsetSec: 0 }
+    ]
+  },
+  goal: {
+    steps: [
+      { freqStart: 523,  freqEnd: 523,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0 },
+      { freqStart: 659,  freqEnd: 659,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.15 },
+      { freqStart: 784,  freqEnd: 784,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.30 },
+      { freqStart: 1047, freqEnd: 1047, durationSec: 0.20, attackSec: 0.005, peakGain: 0.40, waveform: 'square', offsetSec: 0.45 }
+    ]
+  }
+};
+
+/** BGM の 1 ステップあたりのミリ秒（BPM=120, 16分音符相当）。 */
+export const BGM_STEP_MS = 125;
+/** BGM 各ノートの実音長（ms）。STEP_MS より短くしてレガート防止。 */
+export const BGM_NOTE_DURATION_MS = 100;
+/** BGM 1 ノートのピーク gain。SE より大幅に小さくして BGM がSEをマスクしない。 */
+export const BGM_NOTE_PEAK_GAIN = 0.08;
+/** BGM ノートのアタック時間（秒）。 */
+export const BGM_NOTE_ATTACK_SEC = 0.005;
+/** BGM ノートの波形。 */
+export const BGM_WAVEFORM: SeWaveform = 'square';
+/** BGM ループパターン（Hz）。16 ステップの矩形波アルペジオ。 */
+export const BGM_PATTERN: ReadonlyArray<number> = [
+  523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 987.77,
+  523.25, 659.25, 783.99, 880.00,  783.99, 659.25, 523.25, 783.99
+];
+/** ゴール時の BGM フェードアウト時間（ms）。 */
+export const BGM_FADE_OUT_MS = 1500;

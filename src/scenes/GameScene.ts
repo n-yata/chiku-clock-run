@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  BGM_FADE_OUT_MS,
   CAMERA_LERP_X,
   CAMERA_LERP_Y,
   ENEMY_SPEED,
@@ -26,6 +27,7 @@ import {
   TOUCH_SLIDE_THRESHOLD_PX,
   TOUCH_ZONE_SPLIT_RATIO
 } from '../config/gameConfig';
+import { AudioManager } from '../audio/AudioManager';
 import { STAGE_01, type StageDefinition } from '../stages/stage01';
 
 interface BuiltStage {
@@ -62,6 +64,7 @@ export class GameScene extends Phaser.Scene {
   private coinsCollected = 0;
   private coinHud!: Phaser.GameObjects.Text;
   private groundMask: ReadonlyArray<ReadonlyArray<boolean>> = [];
+  private audio!: AudioManager;
 
   constructor() {
     super('GameScene');
@@ -138,6 +141,11 @@ export class GameScene extends Phaser.Scene {
 
     this.input.addPointer(2);
     this.setupTouchControls();
+
+    this.audio = new AudioManager();
+    this.input.keyboard!.once('keydown', () => { this.audio.unlock(); });
+    this.audio.startBgm();
+    this.events.once('shutdown', () => { this.audio.destroy(); });
   }
 
   update(): void {
@@ -168,6 +176,7 @@ export class GameScene extends Phaser.Scene {
 
     if ((keyJumpDown || this.touchJumpRequested) && onGround) {
       this.player.setVelocityY(JUMP_VELOCITY);
+      this.audio.playSe('jump');
     }
     this.touchJumpRequested = false;
 
@@ -370,6 +379,7 @@ export class GameScene extends Phaser.Scene {
     if (this.isCleared || this.isMissed) return;
     (coin as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
     this.coinsCollected++;
+    this.audio.playSe('coin');
     this.refreshCoinHud();
   };
 
@@ -383,6 +393,7 @@ export class GameScene extends Phaser.Scene {
     if (isStomp) {
       eSprite.disableBody(true, true);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
+      this.audio.playSe('stomp');
     } else {
       this.handleMiss('enemy');
     }
@@ -391,6 +402,7 @@ export class GameScene extends Phaser.Scene {
   private handleMiss(_reason: 'fall' | 'enemy'): void {
     if (this.isMissed || this.isCleared) return;
     this.isMissed = true;
+    this.audio.playSe('miss');
     this.player.setTint(MISS_FLASH_COLOR);
     this.player.setVelocity(0, 0);
     this.time.delayedCall(MISS_FLASH_MS, () => this.fullRestart(), [], this);
@@ -408,6 +420,8 @@ export class GameScene extends Phaser.Scene {
   private onGoalHit = (): void => {
     if (this.isCleared) return;
     this.isCleared = true;
+    this.audio.playSe('goal');
+    this.audio.stopBgm(BGM_FADE_OUT_MS);
     this.player.setVelocity(0, 0);
 
     this.add
@@ -444,6 +458,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    this.audio.unlock();
     if (this.isMissed) return;
     if (this.isCleared) {
       this.fullRestart();
