@@ -78,6 +78,62 @@
 
 ---
 
+## D-3: リスタート方式を `scene.restart()` から `scene.start('BootScene')` に切替
+
+**日付:** 2026-05-04
+**関連:** D-2 後の実機確認で発覚
+
+### Why
+
+- D-2 のホットフィックス後、シャビが Pages 上で再確認したところ「**2 回目以降のリスタートで初回位置から床貫通して落ち続ける**」現象を報告
+- 1 回目のプレイは正常に床に立つ（D-1 の修正は効いている）
+- 2 回目以降のみ崩れることから、`scene.restart()` 後の物理ワールド再構築タイミングで `staticGroup.create()` で生成された地面 sprite の static body サイズ・位置が完全に確立されないケースを疑う（特に `BootScene.preload()` の `Graphics.generateTexture` 由来テクスチャを参照する場合に顕著）
+
+### Decision
+
+- `update()` 内 R キーの分岐と、タッチクリア時の `handlePointerDown` 分岐の両方で `this.scene.restart()` を `this.scene.start('BootScene')` に置換
+- `BootScene → GameScene` の流れで、テクスチャ・物理ワールド・入力プラグインがすべて再初期化される完全再構築方式に変更
+- 念のため、`buildStage()` の各地面 sprite と goal sprite に `refreshBody()` を明示呼び出しして、static body のサイズ・位置を確実に再計算
+
+### Consequence
+
+- リスタート後の地面貫通バグを根治（仮説どおりであれば）
+- 再構築コストは数 ms 程度増加するが、v0.1 規模では誤差レベル
+- design.md §10.1 Q3 で「リスタート方式は `this.scene.restart()` 採用」と決めていたが、本決定で更新。**Why は安定性 > わずかな再構築コスト**
+- 副作用: `BootScene` を経由するため、リスタート時に一瞬黒画面（テクスチャ再生成中）が見える可能性。実機で気になれば BootScene の preload 高速化を検討
+
+---
+
+## D-4: タッチ UI を 3 ボタン → 画面左右半分の長押し + 短タップでジャンプ に変更
+
+**日付:** 2026-05-04
+**関連:** D-2 後の実機 UX レビュー
+
+### Why
+
+- D-2 で導入した画面下部 3 ボタン（左 / 右 / ジャンプ）はゲーム画面を圧迫し、視認性も低かった
+- シャビからの指示: 「タッチボタンは表示せず、右側左側の長押しで進む、短いタッチでジャンプにして」
+- スマホでの自然な操作（画面全体をタッチ領域として使う）を最小実装で提供する
+
+### Decision
+
+- 3 ボタン UI を全廃
+- `this.input.on('pointerdown' / 'pointerup' / 'pointerupoutside')` でグローバル pointer ハンドラを実装
+- 押下時に `pointer.x < this.scale.width / 2` で左右半分を判定し、`TOUCH_HOLD_MS=180` 経過後も押されていれば移動モード（`touchLeft` / `touchRight` 立て）
+- `TOUCH_HOLD_MS` 未満で離されたら `touchJumpRequested` を 1 フレーム立てて `update()` で消費
+- クリア中は pointerdown でリスタート（クリアテキストの `setInteractive()` は廃止し、画面全体タップで restart 受付）
+- 閾値 `TOUCH_HOLD_MS` は `gameConfig.ts` に集約（ハードコード禁止ルール）
+- 操作説明テキストを「PC: ←/→ Space/↑ R   スマホ: 画面左右の長押しで移動 / タップでジャンプ」に更新
+
+### Consequence
+
+- 画面が広く使え、ゲーム画面の視認性が改善
+- タッチ操作の学習コストは「左右半分長押し / タップでジャンプ」だけで覚えやすい
+- 前回 Q12（バックグラウンド復帰時の押下固着） / Q13（クリア時のボタン重複発火）は本変更で実質解消（タイマーベース + 画面全体ハンドラのため、ボタン領域重複が起きない）。Q12 は依然 v0.2 で `Phaser.Scenes.Events.SLEEP/PAUSE` 対応推奨
+- 副作用: PC マウスクリックでも同じハンドラが発火する。意図せず移動 / ジャンプが発生するが、PC ユーザーはキーボードを使う前提なので実害軽微
+
+---
+
 ## D-N: 進行中の未確定事項
 
 | ID | 項目 | 現状 |
@@ -85,8 +141,11 @@
 | Q6 | ステージ寸法（`cols`, `rows`） | 暫定 `cols=120, rows=17`。実機プレイ後に調整可 |
 | Q7 | カメラ lerp パラメータ | 暫定 `(0.1, 0.1)`。実機プレイ後に調整可 |
 | Q8 | クリアテキストのフォントサイズ | 44px に変更（タッチ用「またはタップで」追記分の長さ調整） |
-| Q12 | タッチフラグの安全弁（クルトワ L-1） | v0.2 で `Phaser.Scenes.Events.SLEEP/PAUSE` リスナで 3 フラグ一括 false 化を検討。バックグラウンド復帰時の押下固着対策 |
-| Q13 | クリア時のタッチボタン無効化（クルトワ L-3） | v0.2 でクリア時に 3 ボタンを `setVisible(false)` + `disableInteractive()` 化。ジャンプボタンとクリアテキストの同時 `pointerdown` 重複発火を防ぐ |
+| Q12 | タッチフラグの安全弁（クルトワ M-1 / L-1 統合） | D-4 のグローバル pointer ハンドラで軽減。v0.2 で完全対策: `Phaser.Scenes.Events.SHUTDOWN` で `input.off()` + `touchHoldTimer.remove()` 明示 / `Phaser.Scenes.Events.SLEEP/PAUSE` で 3 フラグ false 化 / `pointercancel` イベントも pointerup と同ハンドラで拾う |
+| Q16 | ジャンプ入力バッファ（クルトワ L-2） | v0.2 操作感調整時に検討。現状の「1 フレーム消費」を「N ms 以内なら消費」する jump buffer パターンに変更すれば、空中で短タップした際の空振りが防げる |
+| Q13 | クリア時のボタン重複発火（クルトワ L-3） | D-4 で UI 構造変更により**解消** |
+| Q14 | リスタート時の一瞬黒画面 | D-3 で BootScene 経由化したため、テクスチャ再生成中に短い黒画面が出る可能性。実機で気になれば preload 高速化 |
+| Q15 | PC でのマウスクリック誤発火 | D-4 で全画面 pointerdown ハンドラ採用のため、PC マウスクリックでも移動 / ジャンプが発火する。実害軽微だが UX 整理は v0.2 |
 
 ---
 

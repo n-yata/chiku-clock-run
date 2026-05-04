@@ -9,6 +9,7 @@ import {
   PLAYER_SPRITE_H,
   TEX_KEY,
   TILE_SIZE,
+  TOUCH_HOLD_MS,
   VIEWPORT_HEIGHT,
   VIEWPORT_WIDTH
 } from '../config/gameConfig';
@@ -21,6 +22,8 @@ interface BuiltStage {
   spawnY: number;
 }
 
+type TouchSide = 'left' | 'right' | null;
+
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -30,7 +33,10 @@ export class GameScene extends Phaser.Scene {
   private isCleared = false;
   private touchLeft = false;
   private touchRight = false;
-  private touchJump = false;
+  private touchJumpRequested = false;
+  private touchHoldTriggered = false;
+  private touchPointerSide: TouchSide = null;
+  private touchHoldTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super('GameScene');
@@ -40,7 +46,10 @@ export class GameScene extends Phaser.Scene {
     this.isCleared = false;
     this.touchLeft = false;
     this.touchRight = false;
-    this.touchJump = false;
+    this.touchJumpRequested = false;
+    this.touchHoldTriggered = false;
+    this.touchPointerSide = null;
+    this.touchHoldTimer = undefined;
 
     const stage = STAGE_01;
     const worldWidth = stage.cols * TILE_SIZE;
@@ -68,11 +77,16 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, CAMERA_LERP_X, CAMERA_LERP_Y);
 
     this.add
-      .text(16, 16, '←/→: 移動  Space/↑: ジャンプ  R: リスタート', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '18px',
-        color: '#ffffff'
-      })
+      .text(
+        16,
+        16,
+        'PC: ←/→ Space/↑ R   スマホ: 画面左右の長押しで移動 / タップでジャンプ',
+        {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '16px',
+          color: '#ffffff'
+        }
+      )
       .setScrollFactor(0);
 
     this.setupTouchControls();
@@ -80,7 +94,7 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-      this.scene.restart();
+      this.fullRestart();
       return;
     }
 
@@ -93,10 +107,8 @@ export class GameScene extends Phaser.Scene {
 
     const leftDown = (this.cursors.left?.isDown ?? false) || this.touchLeft;
     const rightDown = (this.cursors.right?.isDown ?? false) || this.touchRight;
-    const jumpDown =
-      (this.cursors.space?.isDown ?? false) ||
-      (this.cursors.up?.isDown ?? false) ||
-      this.touchJump;
+    const keyJumpDown =
+      (this.cursors.space?.isDown ?? false) || (this.cursors.up?.isDown ?? false);
 
     if (leftDown) {
       this.player.setVelocityX(-PLAYER_SPEED);
@@ -106,9 +118,10 @@ export class GameScene extends Phaser.Scene {
       this.player.setVelocityX(0);
     }
 
-    if (jumpDown && onGround) {
+    if ((keyJumpDown || this.touchJumpRequested) && onGround) {
       this.player.setVelocityY(JUMP_VELOCITY);
     }
+    this.touchJumpRequested = false;
 
     if (this.player.y > FALL_THRESHOLD_Y) {
       this.respawn();
@@ -162,7 +175,14 @@ export class GameScene extends Phaser.Scene {
       const line = def.tiles[r];
       for (let c = 0; c < def.cols; c++) {
         if (line.charAt(c) === '#') {
-          ground.create(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE + TILE_SIZE / 2, TEX_KEY.ground);
+          // refreshBody() を明示的に呼んで static body のサイズ・位置を確実に再計算する。
+          // scene 再起動時に generateTexture 由来テクスチャの寸法取得が遅延するケースの保険。
+          const tile = ground.create(
+            c * TILE_SIZE + TILE_SIZE / 2,
+            r * TILE_SIZE + TILE_SIZE / 2,
+            TEX_KEY.ground
+          ) as Phaser.Physics.Arcade.Sprite;
+          tile.refreshBody();
         }
       }
     }
@@ -174,6 +194,7 @@ export class GameScene extends Phaser.Scene {
       (goalRow + 1) * TILE_SIZE - GOAL_SPRITE_H / 2,
       TEX_KEY.goal
     );
+    goal.refreshBody();
 
     return {
       ground,
@@ -188,12 +209,20 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(this.spawnX, this.spawnY);
   }
 
+  private fullRestart(): void {
+    // scene.restart() 経由のリセットでは 2 回目以降に static body のサイズが
+    // 取れず player が地面を貫通する不具合があったため、BootScene を経由する
+    // 完全再構築に切り替えた。BootScene → GameScene の流れでテクスチャ・物理
+    // ワールド・入力プラグインがすべて再初期化される。
+    this.scene.start('BootScene');
+  }
+
   private onGoalHit(): void {
     if (this.isCleared) return;
     this.isCleared = true;
     this.player.setVelocity(0, 0);
 
-    const clearText = this.add
+    this.add
       .text(VIEWPORT_WIDTH / 2, VIEWPORT_HEIGHT / 2, 'クリア！\nR またはタップで最初から', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '44px',
@@ -203,67 +232,42 @@ export class GameScene extends Phaser.Scene {
         align: 'center'
       })
       .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setInteractive();
-    clearText.on('pointerdown', () => this.scene.restart());
+      .setScrollFactor(0);
   }
 
   private setupTouchControls(): void {
-    const btnSize = 88;
-    const btnY = VIEWPORT_HEIGHT - 56;
-    const leftX = 64;
-    const rightX = leftX + btnSize + 16;
-    const jumpX = VIEWPORT_WIDTH - 64;
-    const fillAlpha = 0.25;
-    const strokeAlpha = 0.6;
-    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '40px',
-      color: '#ffffff'
-    };
+    this.input.on('pointerdown', this.handlePointerDown, this);
+    this.input.on('pointerup', this.handlePointerUp, this);
+    this.input.on('pointerupoutside', this.handlePointerUp, this);
+  }
 
-    const makeButton = (x: number, label: string, onDown: () => void, onUp: () => void): void => {
-      const rect = this.add
-        .rectangle(x, btnY, btnSize, btnSize, 0xffffff, fillAlpha)
-        .setScrollFactor(0)
-        .setStrokeStyle(2, 0xffffff, strokeAlpha)
-        .setInteractive();
-      rect.on('pointerdown', onDown);
-      rect.on('pointerup', onUp);
-      rect.on('pointerupoutside', onUp);
-      rect.on('pointerout', onUp);
-      this.add.text(x, btnY, label, labelStyle).setOrigin(0.5).setScrollFactor(0);
-    };
-
-    makeButton(
-      leftX,
-      '←',
-      () => {
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.isCleared) {
+      this.fullRestart();
+      return;
+    }
+    this.touchPointerSide = pointer.x < this.scale.width / 2 ? 'left' : 'right';
+    this.touchHoldTriggered = false;
+    this.touchHoldTimer?.remove();
+    this.touchHoldTimer = this.time.delayedCall(TOUCH_HOLD_MS, () => {
+      this.touchHoldTriggered = true;
+      if (this.touchPointerSide === 'left') {
         this.touchLeft = true;
-      },
-      () => {
-        this.touchLeft = false;
-      }
-    );
-    makeButton(
-      rightX,
-      '→',
-      () => {
+      } else if (this.touchPointerSide === 'right') {
         this.touchRight = true;
-      },
-      () => {
-        this.touchRight = false;
       }
-    );
-    makeButton(
-      jumpX,
-      '↑',
-      () => {
-        this.touchJump = true;
-      },
-      () => {
-        this.touchJump = false;
-      }
-    );
+    });
+  }
+
+  private handlePointerUp(): void {
+    if (!this.touchHoldTriggered && this.touchPointerSide !== null) {
+      this.touchJumpRequested = true;
+    }
+    this.touchHoldTimer?.remove();
+    this.touchHoldTimer = undefined;
+    this.touchLeft = false;
+    this.touchRight = false;
+    this.touchHoldTriggered = false;
+    this.touchPointerSide = null;
   }
 }

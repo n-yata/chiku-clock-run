@@ -30,3 +30,5 @@ export const TEX_KEY = {
 
 export const CAMERA_LERP_X = 0.1;
 export const CAMERA_LERP_Y = 0.1;
+
+export const TOUCH_HOLD_MS = 180;
