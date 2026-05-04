@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
 import {
+  COIN_COLOR,
+  COIN_SPRITE_H,
+  COIN_SPRITE_W,
+  ENEMY_COLOR,
+  ENEMY_SPRITE_H,
+  ENEMY_SPRITE_W,
   GOAL_COLOR,
   GOAL_SPRITE_H,
   GOAL_SPRITE_W,
@@ -32,6 +38,17 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(GOAL_COLOR, 1);
     g.fillRect(0, 0, GOAL_SPRITE_W, GOAL_SPRITE_H);
     g.generateTexture(TEX_KEY.goal, GOAL_SPRITE_W, GOAL_SPRITE_H);
+    g.clear();
+
+    g.fillStyle(ENEMY_COLOR, 1);
+    g.fillRect(0, 0, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+    g.generateTexture(TEX_KEY.enemy, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+    g.clear();
+
+    // コインは円形で描画してゴール（黄色矩形）と形でも区別する
+    g.fillStyle(COIN_COLOR, 1);
+    g.fillCircle(COIN_SPRITE_W / 2, COIN_SPRITE_H / 2, COIN_SPRITE_W / 2);
+    g.generateTexture(TEX_KEY.coin, COIN_SPRITE_W, COIN_SPRITE_H);
     g.destroy();
   }
 
