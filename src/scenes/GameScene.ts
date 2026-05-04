@@ -3,8 +3,10 @@ import {
   CAMERA_LERP_X,
   CAMERA_LERP_Y,
   FALL_THRESHOLD_Y,
+  GOAL_SPRITE_H,
   JUMP_VELOCITY,
   PLAYER_SPEED,
+  PLAYER_SPRITE_H,
   TEX_KEY,
   TILE_SIZE,
   VIEWPORT_HEIGHT,
@@ -26,6 +28,9 @@ export class GameScene extends Phaser.Scene {
   private spawnX = 0;
   private spawnY = 0;
   private isCleared = false;
+  private touchLeft = false;
+  private touchRight = false;
+  private touchJump = false;
 
   constructor() {
     super('GameScene');
@@ -33,6 +38,9 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.isCleared = false;
+    this.touchLeft = false;
+    this.touchRight = false;
+    this.touchJump = false;
 
     const stage = STAGE_01;
     const worldWidth = stage.cols * TILE_SIZE;
@@ -66,6 +74,8 @@ export class GameScene extends Phaser.Scene {
         color: '#ffffff'
       })
       .setScrollFactor(0);
+
+    this.setupTouchControls();
   }
 
   update(): void {
@@ -81,15 +91,22 @@ export class GameScene extends Phaser.Scene {
 
     const onGround = this.player.body?.blocked.down ?? false;
 
-    if (this.cursors.left?.isDown) {
+    const leftDown = (this.cursors.left?.isDown ?? false) || this.touchLeft;
+    const rightDown = (this.cursors.right?.isDown ?? false) || this.touchRight;
+    const jumpDown =
+      (this.cursors.space?.isDown ?? false) ||
+      (this.cursors.up?.isDown ?? false) ||
+      this.touchJump;
+
+    if (leftDown) {
       this.player.setVelocityX(-PLAYER_SPEED);
-    } else if (this.cursors.right?.isDown) {
+    } else if (rightDown) {
       this.player.setVelocityX(PLAYER_SPEED);
     } else {
       this.player.setVelocityX(0);
     }
 
-    if ((this.cursors.space?.isDown || this.cursors.up?.isDown) && onGround) {
+    if (jumpDown && onGround) {
       this.player.setVelocityY(JUMP_VELOCITY);
     }
 
@@ -150,9 +167,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // 'P' / 'G' タイルはスプライトの足元が乗るセルを表す。
+    // スプライト下端 = (row + 1) * TILE_SIZE になるように中心 Y を逆算する。
     const goal = this.physics.add.staticSprite(
       goalCol * TILE_SIZE + TILE_SIZE / 2,
-      goalRow * TILE_SIZE + TILE_SIZE / 2,
+      (goalRow + 1) * TILE_SIZE - GOAL_SPRITE_H / 2,
       TEX_KEY.goal
     );
 
@@ -160,7 +179,7 @@ export class GameScene extends Phaser.Scene {
       ground,
       goal,
       spawnX: spawnCol * TILE_SIZE + TILE_SIZE / 2,
-      spawnY: spawnRow * TILE_SIZE + TILE_SIZE / 2
+      spawnY: (spawnRow + 1) * TILE_SIZE - PLAYER_SPRITE_H / 2
     };
   }
 
@@ -174,16 +193,77 @@ export class GameScene extends Phaser.Scene {
     this.isCleared = true;
     this.player.setVelocity(0, 0);
 
-    this.add
-      .text(VIEWPORT_WIDTH / 2, VIEWPORT_HEIGHT / 2, 'クリア！\nR で最初から', {
+    const clearText = this.add
+      .text(VIEWPORT_WIDTH / 2, VIEWPORT_HEIGHT / 2, 'クリア！\nR またはタップで最初から', {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '48px',
+        fontSize: '44px',
         color: '#ffffff',
         stroke: '#000000',
         strokeThickness: 6,
         align: 'center'
       })
       .setOrigin(0.5)
-      .setScrollFactor(0);
+      .setScrollFactor(0)
+      .setInteractive();
+    clearText.on('pointerdown', () => this.scene.restart());
+  }
+
+  private setupTouchControls(): void {
+    const btnSize = 88;
+    const btnY = VIEWPORT_HEIGHT - 56;
+    const leftX = 64;
+    const rightX = leftX + btnSize + 16;
+    const jumpX = VIEWPORT_WIDTH - 64;
+    const fillAlpha = 0.25;
+    const strokeAlpha = 0.6;
+    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '40px',
+      color: '#ffffff'
+    };
+
+    const makeButton = (x: number, label: string, onDown: () => void, onUp: () => void): void => {
+      const rect = this.add
+        .rectangle(x, btnY, btnSize, btnSize, 0xffffff, fillAlpha)
+        .setScrollFactor(0)
+        .setStrokeStyle(2, 0xffffff, strokeAlpha)
+        .setInteractive();
+      rect.on('pointerdown', onDown);
+      rect.on('pointerup', onUp);
+      rect.on('pointerupoutside', onUp);
+      rect.on('pointerout', onUp);
+      this.add.text(x, btnY, label, labelStyle).setOrigin(0.5).setScrollFactor(0);
+    };
+
+    makeButton(
+      leftX,
+      '←',
+      () => {
+        this.touchLeft = true;
+      },
+      () => {
+        this.touchLeft = false;
+      }
+    );
+    makeButton(
+      rightX,
+      '→',
+      () => {
+        this.touchRight = true;
+      },
+      () => {
+        this.touchRight = false;
+      }
+    );
+    makeButton(
+      jumpX,
+      '↑',
+      () => {
+        this.touchJump = true;
+      },
+      () => {
+        this.touchJump = false;
+      }
+    );
   }
 }
