@@ -1,13 +1,11 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
-import { BG_COLOR, GRAVITY_Y, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from './config/gameConfig';
+import { BG_COLOR, GRAVITY_Y } from './config/gameConfig';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: VIEWPORT_WIDTH,
-  height: VIEWPORT_HEIGHT,
   pixelArt: true,
   backgroundColor: BG_COLOR,
   physics: {
@@ -18,8 +16,8 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.NO_CENTER
   },
   scene: [BootScene, GameScene]
 };

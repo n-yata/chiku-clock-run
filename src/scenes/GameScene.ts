@@ -24,9 +24,7 @@ import {
   TEX_KEY,
   TILE_SIZE,
   TOUCH_SLIDE_THRESHOLD_PX,
-  TOUCH_ZONE_SPLIT_RATIO,
-  VIEWPORT_HEIGHT,
-  VIEWPORT_WIDTH
+  TOUCH_ZONE_SPLIT_RATIO
 } from '../config/gameConfig';
 import { STAGE_01, type StageDefinition } from '../stages/stage01';
 
@@ -414,8 +412,8 @@ export class GameScene extends Phaser.Scene {
 
     this.add
       .text(
-        VIEWPORT_WIDTH / 2,
-        VIEWPORT_HEIGHT / 2,
+        this.scale.width / 2,
+        this.scale.height / 2,
         `クリア！\n${this.formatCoinHud()}\nR またはタップで最初から`,
         {
           fontFamily: 'system-ui, sans-serif',
