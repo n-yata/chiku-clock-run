@@ -98,7 +98,7 @@
 - シークレット管理: 本案件では発生しない（バックエンド・外部 API なし）。`.env` は `.gitignore` 対象として防御済み
 - 通信暗号化: GitHub Pages の HTTPS 配信に依存
 - 認証・認可: なし（公開ゲーム）
-- 入力バリデーション: キーボード入力のみ。Phaser の `add.text()` に渡す文字列は全てリテラル定数で動的展開なし
+- 入力バリデーション: キーボード・タッチ入力。Phaser の `add.text()` に渡す文字列は全てリテラル定数で動的展開なし。タッチ座標は内部ロジックのみで使用し外部送信しない
 - CSP: `index.html` の `<meta http-equiv="Content-Security-Policy">` で `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'` を設定
 - ハードコーディング禁止: 物理定数・ステージ定義は `src/config/gameConfig.ts` / `src/stages/stage01.ts` に集約。GitHub Pages base パスのみ `vite.config.ts` 経由で `VITE_BASE_PATH` 環境変数から取得
 
@@ -107,6 +107,7 @@
 ## 拡張・将来課題
 
 - v0.2（実装済み）: 敵キャラクター 4 体（踏みつけ撃破 / 段差端反転 AI）・コイン 15 枚・スコア HUD・ミス演出（白フラッシュ → `window.location.reload()`）
+- モバイル操作改善（実装済み）: 左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理。縦向き時の横向き促進オーバーレイ（CSS `@media orientation`）・ピンチズーム無効化
 - v0.3 以降: BGM / SE、複数ステージ、タイトル画面、ライフ / パワーアップ
 - 複数ステージ追加時: `src/stages/` にファイル追加 + ステージ選択 UI
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
