@@ -1,6 +1,6 @@
 # リポジトリ構造定義書
 
-> v0.1 時点での薄いたたき。本プロジェクトはフロント単体構成（バックエンドなし）。
+> 本プロジェクトはフロント単体構成（バックエンドなし）。
 
 ## ディレクトリ構成
 
@@ -19,10 +19,14 @@ mario-game/
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 設定
 ├── package.json                  # 依存（phaser のみ） + scripts
-├── docs/                         # 永続的ドキュメント
-│   ├── architecture.md
-│   ├── repository-structure.md
-│   └── template/                 # 永続的ドキュメントのひな形（v0.2 以降で他ファイルを追加）
+├── docs/                         # 永続的ドキュメント（6 本）
+│   ├── product-requirements.md   # プロダクト要件定義書
+│   ├── functional-design.md      # 機能設計書
+│   ├── architecture.md           # 技術仕様書
+│   ├── repository-structure.md   # リポジトリ構造定義書（本ファイル）
+│   ├── development-guidelines.md # 開発ガイドライン
+│   ├── glossary.md               # ユビキタス言語定義
+│   └── template/                 # 永続的ドキュメントのひな形
 ├── .steering/                    # 作業単位のステアリングファイル
 │   ├── template/
 │   └── [YYYYMMDD]-[開発タイトル]/  # スプリント単位（requirements/design/tasklist/decisions）
@@ -48,7 +52,7 @@ mario-game/
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定 |
 | `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用） |
-| `docs/` | 永続的ドキュメント（プロダクト要求・設計・技術仕様・開発ガイドライン）。v0.1 では本ファイル + `architecture.md` のみ |
+| `docs/` | 永続的ドキュメント 6 本（`product-requirements.md` / `functional-design.md` / `architecture.md` / `repository-structure.md` / `development-guidelines.md` / `glossary.md`） |
 | `docs/template/` | 永続的ドキュメントのひな形 |
 | `.steering/[YYYYMMDD]-[開発タイトル]/` | スプリント単位の要求・設計・タスクリスト・決定事項ログ |
 | `.steering/template/` | スプリント単位ドキュメントのひな形 |
