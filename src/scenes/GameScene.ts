@@ -23,7 +23,8 @@ import {
   STOMP_TOLERANCE_PX,
   TEX_KEY,
   TILE_SIZE,
-  TOUCH_HOLD_MS,
+  TOUCH_SLIDE_THRESHOLD_PX,
+  TOUCH_ZONE_SPLIT_RATIO,
   VIEWPORT_HEIGHT,
   VIEWPORT_WIDTH
 } from '../config/gameConfig';
@@ -40,7 +41,6 @@ interface BuiltStage {
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;
 }
 
-type TouchSide = 'left' | 'right' | null;
 type EnemyDir = -1 | 1;
 
 export class GameScene extends Phaser.Scene {
@@ -54,9 +54,9 @@ export class GameScene extends Phaser.Scene {
   private touchLeft = false;
   private touchRight = false;
   private touchJumpRequested = false;
-  private touchHoldTriggered = false;
-  private touchPointerSide: TouchSide = null;
-  private touchHoldTimer?: Phaser.Time.TimerEvent;
+  private jumpPointerId: number | null = null;
+  private movePointerId: number | null = null;
+  private touchMoveBaseX: number | null = null;
 
   private enemies!: Phaser.Physics.Arcade.Group;
   private coins!: Phaser.Physics.Arcade.StaticGroup;
@@ -75,9 +75,9 @@ export class GameScene extends Phaser.Scene {
     this.touchLeft = false;
     this.touchRight = false;
     this.touchJumpRequested = false;
-    this.touchHoldTriggered = false;
-    this.touchPointerSide = null;
-    this.touchHoldTimer = undefined;
+    this.jumpPointerId = null;
+    this.movePointerId = null;
+    this.touchMoveBaseX = null;
     this.coinsCollected = 0;
 
     const stage = STAGE_01;
@@ -119,7 +119,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         16,
         16,
-        'PC: ←/→ Space/↑ R   スマホ: 画面左右の長押しで移動 / タップでジャンプ',
+        'PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ',
         {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '16px',
@@ -138,6 +138,7 @@ export class GameScene extends Phaser.Scene {
       })
       .setScrollFactor(0);
 
+    this.input.addPointer(2);
     this.setupTouchControls();
   }
 
@@ -439,6 +440,7 @@ export class GameScene extends Phaser.Scene {
 
   private setupTouchControls(): void {
     this.input.on('pointerdown', this.handlePointerDown, this);
+    this.input.on('pointermove', this.handlePointerMove, this);
     this.input.on('pointerup', this.handlePointerUp, this);
     this.input.on('pointerupoutside', this.handlePointerUp, this);
   }
@@ -449,28 +451,52 @@ export class GameScene extends Phaser.Scene {
       this.fullRestart();
       return;
     }
-    this.touchPointerSide = pointer.x < this.scale.width / 2 ? 'left' : 'right';
-    this.touchHoldTriggered = false;
-    this.touchHoldTimer?.remove();
-    this.touchHoldTimer = this.time.delayedCall(TOUCH_HOLD_MS, () => {
-      this.touchHoldTriggered = true;
-      if (this.touchPointerSide === 'left') {
-        this.touchLeft = true;
-      } else if (this.touchPointerSide === 'right') {
-        this.touchRight = true;
+
+    const splitX = this.scale.width * TOUCH_ZONE_SPLIT_RATIO;
+    if (pointer.x < splitX) {
+      // 左ゾーン: スライド移動
+      if (this.movePointerId === null) {
+        this.movePointerId = pointer.id;
+        this.touchMoveBaseX = pointer.x;
+        this.touchLeft = false;
+        this.touchRight = false;
       }
-    });
+    } else {
+      // 右ゾーン: 即時ジャンプ
+      if (this.jumpPointerId === null) {
+        this.jumpPointerId = pointer.id;
+        this.touchJumpRequested = true;
+      }
+    }
   }
 
-  private handlePointerUp(): void {
-    if (!this.touchHoldTriggered && this.touchPointerSide !== null) {
-      this.touchJumpRequested = true;
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.isMissed || this.isCleared) return;
+    if (pointer.id !== this.movePointerId) return;
+    if (this.touchMoveBaseX === null) return;
+
+    const dx = pointer.x - this.touchMoveBaseX;
+    if (dx > TOUCH_SLIDE_THRESHOLD_PX) {
+      this.touchLeft = false;
+      this.touchRight = true;
+    } else if (dx < -TOUCH_SLIDE_THRESHOLD_PX) {
+      this.touchLeft = true;
+      this.touchRight = false;
+    } else {
+      this.touchLeft = false;
+      this.touchRight = false;
     }
-    this.touchHoldTimer?.remove();
-    this.touchHoldTimer = undefined;
-    this.touchLeft = false;
-    this.touchRight = false;
-    this.touchHoldTriggered = false;
-    this.touchPointerSide = null;
+  }
+
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    if (pointer.id === this.jumpPointerId) {
+      this.jumpPointerId = null;
+    }
+    if (pointer.id === this.movePointerId) {
+      this.movePointerId = null;
+      this.touchMoveBaseX = null;
+      this.touchLeft = false;
+      this.touchRight = false;
+    }
   }
 }

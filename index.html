@@ -2,7 +2,9 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0,
+                   minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
@@ -24,10 +26,36 @@
         max-width: 100vw;
         max-height: 100vh;
       }
+      #rotate-notice {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: #000;
+        color: #fff;
+        font-size: 24px;
+        text-align: center;
+        align-items: center;
+        justify-content: center;
+        padding: 0 24px;
+        line-height: 1.6;
+      }
+      @media (orientation: portrait) {
+        #rotate-notice { display: flex; }
+        #game { visibility: hidden; }
+      }
+      @media (orientation: landscape) {
+        #rotate-notice { display: none; }
+        #game { visibility: visible; }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-notice">
+      端末を横向きにしてプレイしてください<br />
+      Please rotate your device.
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

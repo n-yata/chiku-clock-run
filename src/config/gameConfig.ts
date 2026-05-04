@@ -33,7 +33,11 @@ export const TEX_KEY = {
 export const CAMERA_LERP_X = 0.1;
 export const CAMERA_LERP_Y = 0.1;
 
-export const TOUCH_HOLD_MS = 180;
+// --- タッチ操作 (mobile-controls-responsive スプリント) ---
+/** 左ゾーンのスライド判定しきい値 (px)。基準Xからこの値を超えた時点で左右移動を開始する。 */
+export const TOUCH_SLIDE_THRESHOLD_PX = 12;
+/** タッチゾーン分割比率。0.5 で画面中央、左 < 0.5 が移動、>= 0.5 がジャンプ。 */
+export const TOUCH_ZONE_SPLIT_RATIO = 0.5;
 
 // --- v0.2: 敵 (Enemy) ---
 export const ENEMY_SPRITE_W = 28;
