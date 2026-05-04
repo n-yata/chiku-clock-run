@@ -25,7 +25,9 @@ import {
   TEX_KEY,
   TILE_SIZE,
   TOUCH_SLIDE_THRESHOLD_PX,
-  TOUCH_ZONE_SPLIT_RATIO
+  TOUCH_ZONE_SPLIT_RATIO,
+  VIEWPORT_HEIGHT,
+  VIEWPORT_WIDTH
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
 import { STAGE_01, type StageDefinition } from '../stages/stage01';
@@ -115,6 +117,16 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.startFollow(this.player, true, CAMERA_LERP_X, CAMERA_LERP_Y);
+
+    const updateZoom = () => {
+      const zoom = Math.min(
+        this.scale.width / VIEWPORT_WIDTH,
+        this.scale.height / VIEWPORT_HEIGHT
+      );
+      this.cameras.main.setZoom(zoom);
+    };
+    updateZoom();
+    this.scale.on(Phaser.Scale.Events.RESIZE, updateZoom);
 
     this.add
       .text(
