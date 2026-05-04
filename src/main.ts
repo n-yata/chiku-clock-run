@@ -1,18 +1,19 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
+import { BG_COLOR, GRAVITY_Y, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from './config/gameConfig';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: 960,
-  height: 540,
+  width: VIEWPORT_WIDTH,
+  height: VIEWPORT_HEIGHT,
   pixelArt: true,
-  backgroundColor: '#5c94fc',
+  backgroundColor: BG_COLOR,
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { x: 0, y: 800 },
+      gravity: { x: 0, y: GRAVITY_Y },
       debug: false
     }
   },

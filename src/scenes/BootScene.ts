@@ -1,4 +1,15 @@
 import Phaser from 'phaser';
+import {
+  GOAL_COLOR,
+  GOAL_SPRITE_H,
+  GOAL_SPRITE_W,
+  GROUND_COLOR,
+  PLAYER_COLOR,
+  PLAYER_SPRITE_H,
+  PLAYER_SPRITE_W,
+  TEX_KEY,
+  TILE_SIZE
+} from '../config/gameConfig';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -7,14 +18,20 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     const g = this.add.graphics();
-    g.fillStyle(0xff3b30, 1);
-    g.fillRect(0, 0, 32, 48);
-    g.generateTexture('player', 32, 48);
+
+    g.fillStyle(PLAYER_COLOR, 1);
+    g.fillRect(0, 0, PLAYER_SPRITE_W, PLAYER_SPRITE_H);
+    g.generateTexture(TEX_KEY.player, PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     g.clear();
 
-    g.fillStyle(0x8b4513, 1);
-    g.fillRect(0, 0, 64, 32);
-    g.generateTexture('ground', 64, 32);
+    g.fillStyle(GROUND_COLOR, 1);
+    g.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+    g.generateTexture(TEX_KEY.ground, TILE_SIZE, TILE_SIZE);
+    g.clear();
+
+    g.fillStyle(GOAL_COLOR, 1);
+    g.fillRect(0, 0, GOAL_SPRITE_W, GOAL_SPRITE_H);
+    g.generateTexture(TEX_KEY.goal, GOAL_SPRITE_W, GOAL_SPRITE_H);
     g.destroy();
   }
 

@@ -65,13 +65,29 @@ code-tunnel tunnel --name mario-game-dev
 claude
 ```
 
-### 6. ゲームをローカル確認
+### 6. デプロイ後にブラウザで動作確認
 
-```bash
-npm run dev
-```
+`main` に push すると GitHub Actions → Pages にデプロイされる。
+`https://<owner>.github.io/mario-game/` を開いて動作を確認する。
 
-`http://localhost:5173/` を Dev Container のポートフォワード越しに開く。
+---
+
+## v0.1 で遊べる範囲
+
+- 1 ステージ（横 4 画面分）を左右移動 + ジャンプで踏破
+- 段差 3 段、隙間 2 箇所、ゴールに触れるとクリア表示
+- 隙間に落ちると即座にステージ最初へリスポーン
+- クリア表示中またはプレイ中に R キーでリスタート
+
+### 操作方法
+
+| キー | 動作 |
+|-----|------|
+| `←` / `→` | 左右移動 |
+| `Space` / `↑` | ジャンプ |
+| `R` | ステージリスタート |
+
+敵・コイン・BGM・複数ステージは v0.2 以降で追加予定。
 
 ---
 
@@ -79,10 +95,10 @@ npm run dev
 
 | コマンド | 用途 |
 |---------|------|
-| `npm run dev` | Vite 開発サーバ起動（HMR あり） |
 | `npm run build` | 型チェック + 本番ビルド（`dist/`） |
-| `npm run preview` | ビルド成果物をローカルで確認 |
 | `npm run typecheck` | TypeScript 型チェックのみ |
+| `npm run preview` | ビルド成果物をローカルで確認（必要に応じて） |
+| `npm run dev` | Vite 開発サーバ起動（このプロジェクトでは基本使用せず、Pages デプロイ後に動作確認する運用） |
 
 ---
 
@@ -93,8 +109,9 @@ npm run dev
 
 ---
 
-## 次のステップ
+## 永続的ドキュメント
 
-`docs/` 配下 6 ファイル（product-requirements / functional-design / architecture /
-repository-structure / development-guidelines / glossary）を `permanent-doc` skill 経由で作成し、
-プロダクト要件と設計を確定させてから `.steering/` で初回スプリントを開始する。
+- [`docs/architecture.md`](./docs/architecture.md) — 技術スタック・通信経路・パフォーマンス・セキュリティ方針
+- [`docs/repository-structure.md`](./docs/repository-structure.md) — ディレクトリ構成・配置ルール
+
+`product-requirements.md` / `functional-design.md` / `development-guidelines.md` / `glossary.md` は v0.2 以降で順次整備する。
