@@ -173,5 +173,6 @@ GitHub Pages への静的デプロイにより、サーバー維持コストゼ�
 | # | 未解決事項 | 決定期限 | 担当 | 備考 |
 |---|-----------|---------|------|------|
 | TBD-001 | ~~外部アセット（画像 / 音声）の導入時期~~ | v0.6 対応済み | シャビ | Kenney "Pixel Platformer"（CC0）PNG 5 種を導入済み。音声ファイル化は未対応 |
+| TBD-004 | ~~PWA 対応（ホーム画面追加・オフライン起動）~~ | v0.7 対応済み | シャビ | Web App Manifest + Service Worker（Workbox Precache）導入。Android Chrome インストールプロンプト・iOS Safari 手動追加に対応 |
 | TBD-002 | BGM / SE の実装方式 | v0.3 設計フェーズ | バルベルデ | Phaser の AudioSprite か Web Audio API 直接利用かを検討 |
 | TBD-003 | 複数ステージ時のデータ管理方式 | v0.3 設計フェーズ | バルベルデ | 現行の TypeScript 配列方式 vs Phaser Tilemap 移行の判断 |

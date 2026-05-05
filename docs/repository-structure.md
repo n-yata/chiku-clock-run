@@ -21,14 +21,15 @@ mario-game/
 │       ├── stage01.ts            # STAGE_01 定数（StageDefinition 型）
 │       ├── stage02.ts            # STAGE_02 定数
 │       └── stage03.ts            # STAGE_03 定数
+├── scripts/                      # ビルド補助スクリプト（Node.js、標準ライブラリのみ）
+│   └── generate-icons.mjs        # PWA アイコン生成（192/512/maskable-512 の RGBA PNG 3 種）
 ├── public/                       # Vite 静的ファイル（dist/ にそのままコピー）
+│   ├── icons/                    # PWA アイコン（generate-icons.mjs で生成）
+│   │   ├── icon-192.png          # 192×192 RGBA PNG（通常アイコン）
+│   │   ├── icon-512.png          # 512×512 RGBA PNG（通常アイコン）
+│   │   └── icon-maskable-512.png # 512×512 RGBA PNG（maskable、80% safe zone 適用）
 │   └── assets/
-│       └── images/               # スプライト PNG（Kenney "Pixel Platformer" CC0）
-│           ├── player.png        # プレイヤーキャラクター（24×24 → 32×48 表示）
-│           ├── ground.png        # 地面タイル（18×18 → 32×32 表示）
-│           ├── goal.png          # ゴール旗（18×18 → 32×64 表示）
-│           ├── enemy.png         # 敵キャラクター（24×24 → 28×28 表示）
-│           ├── coin.png          # コイン（18×18 → 16×16 表示）
+│       └── images/               # スプライト PNG（Kenney "Pixel Platformer" CC0）※src/ に移動済み
 │           └── KENNEY_LICENSE.txt  # CC0 ライセンス原文
 ├── index.html                    # Vite エントリ HTML（CSP `<meta>` 含む）
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
@@ -68,7 +69,9 @@ mario-game/
 | `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・敵 / コイン物理・ミス演出・HUD スタイル・SE/BGM パラメータ・寸法・閾値・テクスチャキーの単一集約点 |
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定 |
-| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用） |
+| `scripts/generate-icons.mjs` | PWA アイコン生成スクリプト。Node.js 標準ライブラリ（`node:zlib` / `node:fs` / `node:path`）のみ使用。`npm run generate-icons` で実行。赤背景（#E52521）+ 白「M」のアイコンを 3 種生成 |
+| `public/icons/` | PWA アイコン 3 種。`manifest.webmanifest` から参照される。`generate-icons.mjs` で再生成可能 |
+| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで manifest / SW を自動生成 |
 | `docs/` | 永続的ドキュメント 6 本（`product-requirements.md` / `functional-design.md` / `architecture.md` / `repository-structure.md` / `development-guidelines.md` / `glossary.md`） |
 | `docs/template/` | 永続的ドキュメントのひな形 |
 | `.steering/[YYYYMMDD]-[開発タイトル]/` | スプリント単位の要求・設計・タスクリスト・決定事項ログ |
@@ -85,6 +88,7 @@ mario-game/
 - 作業単位のドキュメントは `.steering/[YYYYMMDD]-[開発タイトル]/` に配置
 - 物理定数・閾値・テクスチャキー・HUD スタイル文字列は `src/config/gameConfig.ts` に集約。シーンファイルにマジックナンバー / 色 / HUD 文言の直書き禁止
 - ステージデータは `src/stages/` に 1 ファイル 1 ステージで配置（`stage01.ts` / `stage02.ts` / `stage03.ts`）
+- PWA アイコンは `public/icons/` に配置。`scripts/generate-icons.mjs` で再生成可能（`npm run generate-icons`）
 - 機密情報を含むファイル（`.env`, シークレット鍵 等）は `.gitignore` 対象（本案件では発生しない想定）
 
 ---

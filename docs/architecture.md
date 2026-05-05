@@ -27,6 +27,9 @@
 - パッケージ管理: npm
 - 主要ライブラリ:
   - `phaser` — 2D ゲームエンジン本体（Scene / Physics / Input / Camera）
+- PWA: `vite-plugin-pwa` 1.2（Vite ビルドプラグイン、Workbox ベース）
+  - Service Worker Precache + Web App Manifest 自動生成
+  - 実行時依存ゼロ（ビルド時生成のみ、バンドルサイズへの影響 < 7 kB gzip）
 - 音声レイヤ: Web Audio API（ブラウザ標準、追加依存なし）
   - `AudioManager`（`src/audio/AudioManager.ts`）— SE 5 種 + BGM ループを `OscillatorNode` / `GainNode` の短命グラフで合成。外部音声ファイル不使用
 
@@ -113,7 +116,7 @@
 - v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）+ 16 ステップアルペジオ BGM。iOS Safari unlock 対応。バンドルサイズ +4 kB のみ
 - v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
-- v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を `public/assets/images/` に配置。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更。アセットパスは `gameConfig.ts` の `ASSET_PATH_*` 定数に集約
+- v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を Vite import 経由で data URI としてバンドルに埋め込む。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更
+- v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。Web App Manifest（`manifest.webmanifest`）と Service Worker（`sw.js`）を自動生成。全アセットを Precache しオフラインでもゲーム起動・全ステージプレイが可能。`injectRegister: 'script'` で独立 `registerSW.js` を使用し CSP `script-src 'self'` を維持。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬（ハードコードなし）。アイコン 3 種（192×192 / 512×512 / maskable 512×512）を `scripts/generate-icons.mjs`（Node.js 標準ライブラリのみ）で生成
 - 今後の拡張: ライフ / パワーアップ、音量調整 UI、スプライトアニメーション化、背景画像追加
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
-- アセット追加: `public/assets/images/` に PNG を追加し `gameConfig.ts` の `ASSET_PATH_*` 定数を追記するだけで対応可
