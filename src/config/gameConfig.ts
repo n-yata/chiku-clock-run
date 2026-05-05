@@ -40,16 +40,16 @@ export const TOUCH_SLIDE_THRESHOLD_PX = 12;
 export const TOUCH_ZONE_SPLIT_RATIO = 0.5;
 
 // --- v0.2: 敵 (Enemy) ---
-export const ENEMY_SPRITE_W = 28;
-export const ENEMY_SPRITE_H = 28;
+export const ENEMY_SPRITE_W = 36;
+export const ENEMY_SPRITE_H = 36;
 export const ENEMY_COLOR = 0x8b572a;
 export const ENEMY_SPEED = 60;
 export const STOMP_BOUNCE_VELOCITY = -280;
 export const STOMP_TOLERANCE_PX = 6;
 
 // --- v0.2: コイン (Coin) ---
-export const COIN_SPRITE_W = 16;
-export const COIN_SPRITE_H = 16;
+export const COIN_SPRITE_W = 24;
+export const COIN_SPRITE_H = 24;
 export const COIN_COLOR = 0xf1c40f;
 
 // --- v0.2: ミス演出 ---
