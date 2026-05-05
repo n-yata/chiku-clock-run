@@ -11,9 +11,11 @@ mario-game/
 │   ├── audio/                    # 音声合成レイヤ（Web Audio API、Phaser 非依存）
 │   │   └── AudioManager.ts       # SE 5 種 + BGM ループの合成・再生・iOS unlock
 │   ├── scenes/                   # Phaser Scene 群
-│   │   ├── BootScene.ts          # プレースホルダ動的生成 → TitleScene へ遷移（リロード復帰時は GameScene 直行）
+│   │   ├── BootScene.ts          # Canvas API でスプライトシート生成 → TitleScene へ遷移（リロード復帰時は GameScene 直行）
 │   │   ├── TitleScene.ts         # タイトル画面（SPACE/Enter/Tap でゲーム開始、全クリア後に自動遷移で戻り先）
-│   │   └── GameScene.ts          # ランタイム（地形構築・操作・カメラ・ゴール・リスタート・音声）
+│   │   ├── GameScene.ts          # ランタイム（地形構築・操作・カメラ・ゴール・リスタート・音声）
+│   │   ├── spriteSheets.ts       # Canvas API によるスプライトシート生成（プレイヤー 4F・敵 2F）
+│   │   └── animations.ts         # Phaser アニメーション定義（player_idle/walk/jump・enemy_walk）
 │   ├── config/                   # ゲーム全体の定数集約
 │   │   └── gameConfig.ts         # 物理・寸法・閾値・テクスチャキー・SE/BGM パラメータ
 │   └── stages/                   # ステージデータ
@@ -63,9 +65,11 @@ mario-game/
 |----------------------|------|
 | `src/main.ts` | `Phaser.Game` 起動。`gameConfig` から viewport / 重力 / 背景色を取得 |
 | `src/audio/AudioManager.ts` | Web Audio API による SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応。Phaser 非依存の純粋クラス |
-| `src/scenes/BootScene.ts` | `Graphics.generateTexture()` でプレイヤー / 地面 / ゴール / 敵 / コインのプレースホルダを生成。通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
+| `src/scenes/BootScene.ts` | Canvas API で `buildPlayerSheet` / `buildEnemySheet` を呼びスプライトシートを生成後、通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
 | `src/scenes/TitleScene.ts` | タイトルテキスト + 「Press SPACE / Tap to Start」プロンプト（点滅）を表示。SPACE / Enter / タップで `GameScene` へ遷移。`Scale.RESIZE` 対応の `layout()` で中央配置を維持。全クリア後の自動遷移先 |
 | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI（壁・段差端反転）/ コイン取得 / スコア HUD / ミス演出 + 完全リスタート / ゴール Overlap / R リスタート（→ TitleScene）/ AudioManager 統合 |
+| `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`textures.exists` による冪等チェック付き |
+| `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
 | `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・敵 / コイン物理・ミス演出・HUD スタイル・SE/BGM パラメータ・寸法・閾値・テクスチャキーの単一集約点 |
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定 |

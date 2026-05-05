@@ -118,5 +118,6 @@
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
 - v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を Vite import 経由で data URI としてバンドルに埋め込む。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更
 - v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。Web App Manifest（`manifest.webmanifest`）と Service Worker（`sw.js`）を自動生成。全アセットを Precache しオフラインでもゲーム起動・全ステージプレイが可能。`injectRegister: 'script'` で独立 `registerSW.js` を使用し CSP `script-src 'self'` を維持。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬（ハードコードなし）。アイコン 3 種（192×192 / 512×512 / maskable 512×512）を `scripts/generate-icons.mjs`（Node.js 標準ライブラリのみ）で生成
-- 今後の拡張: ライフ / パワーアップ、音量調整 UI、スプライトアニメーション化、背景画像追加
+- v0.8（実装済み）: スプライトアニメーション化 — `document.createElement('canvas')` + `textures.addCanvas` + `Texture.add(name, ...)` によるプログラマティックスプライトシート生成。プレイヤー 4 フレーム（idle/walk1/walk2/jump）・敵 2 フレーム（walk1/walk2）をアニメーション再生。`generateFrameNames` + 名前付きフレームで管理。描画は 32×48 固定座標空間で行い `drawImage` でフレームサイズへスケーリング（サイズ変更に `gameConfig.ts` 定数変更のみで追従）。踏みつけ判定を `pBody.centerY <= eBody.centerY` 方式に変更し高度差バグを解消
+- 今後の拡張: ライフ / パワーアップ、音量調整 UI、背景画像追加
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
