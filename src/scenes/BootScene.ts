@@ -13,6 +13,7 @@ import {
   PLAYER_COLOR,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
+  STAGE_INDEX_STORAGE_KEY,
   TEX_KEY,
   TILE_SIZE
 } from '../config/gameConfig';
@@ -53,6 +54,17 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.scene.start('GameScene');
+    let stageIndex = 0;
+    try {
+      const stored = sessionStorage.getItem(STAGE_INDEX_STORAGE_KEY);
+      if (stored !== null) {
+        const parsed = Number.parseInt(stored, 10);
+        if (Number.isInteger(parsed) && parsed >= 0) {
+          stageIndex = parsed;
+        }
+        sessionStorage.removeItem(STAGE_INDEX_STORAGE_KEY);
+      }
+    } catch { /* sessionStorage 利用不可時は stageIndex=0 のまま */ }
+    this.scene.start('GameScene', { stageIndex });
   }
 }

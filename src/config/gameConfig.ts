@@ -136,3 +136,17 @@ export const BGM_PATTERN: ReadonlyArray<number> = [
 ];
 /** ゴール時の BGM フェードアウト時間（ms）。 */
 export const BGM_FADE_OUT_MS = 1500;
+
+// --- v0.4: ステージ進行 ---
+/** クリア後、次ステージ遷移のフェードアウト開始までの待ち時間 (ms) */
+export const STAGE_CLEAR_DELAY_MS = 1200;
+/** カメラフェードイン/アウト時間 (ms) */
+export const STAGE_FADE_MS = 600;
+/** true にすると window.location.reload() 経路を使う（床貫通バグ再発時のフォールバック） */
+export const USE_HARD_RELOAD_FALLBACK = false;
+/** reload フォールバック時にステージ番号を退避する sessionStorage キー */
+export const STAGE_INDEX_STORAGE_KEY = 'mario-game.stageIndex';
+/** HUD ステージ表示の Y 座標（px） */
+export const HUD_STAGE_Y = 16;
+/** HUD ステージ表示ラベル */
+export const HUD_STAGE_LABEL = 'STAGE';

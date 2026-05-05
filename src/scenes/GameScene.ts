@@ -13,6 +13,8 @@ import {
   HUD_COIN_Y,
   HUD_FONT_COLOR,
   HUD_FONT_SIZE,
+  HUD_STAGE_LABEL,
+  HUD_STAGE_Y,
   HUD_STROKE_COLOR,
   HUD_STROKE_THICKNESS,
   JUMP_VELOCITY,
@@ -20,17 +22,21 @@ import {
   MISS_FLASH_MS,
   PLAYER_SPEED,
   PLAYER_SPRITE_H,
+  STAGE_CLEAR_DELAY_MS,
+  STAGE_FADE_MS,
+  STAGE_INDEX_STORAGE_KEY,
   STOMP_BOUNCE_VELOCITY,
   STOMP_TOLERANCE_PX,
   TEX_KEY,
   TILE_SIZE,
   TOUCH_SLIDE_THRESHOLD_PX,
   TOUCH_ZONE_SPLIT_RATIO,
+  USE_HARD_RELOAD_FALLBACK,
   VIEWPORT_HEIGHT,
   VIEWPORT_WIDTH
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
-import { STAGE_01, type StageDefinition } from '../stages/stage01';
+import { getStage, nextStageIndex, STAGES, type StageDefinition } from '../stages/index';
 
 interface BuiltStage {
   ground: Phaser.Physics.Arcade.StaticGroup;
@@ -65,17 +71,29 @@ export class GameScene extends Phaser.Scene {
   private coinTotal = 0;
   private coinsCollected = 0;
   private coinHud!: Phaser.GameObjects.Text;
+  private stageHud!: Phaser.GameObjects.Text;
   private instructionText!: Phaser.GameObjects.Text;
   private groundMask: ReadonlyArray<ReadonlyArray<boolean>> = [];
   private audio!: AudioManager;
+
+  private stageIndex = 0;
+  private stage!: StageDefinition;
+  private isAllCleared = false;
 
   constructor() {
     super('GameScene');
   }
 
+  init(data: { stageIndex?: number }): void {
+    const resolved = getStage(data?.stageIndex ?? 0);
+    this.stageIndex = resolved.index;
+    this.stage = resolved.stage;
+  }
+
   create(): void {
     this.isCleared = false;
     this.isMissed = false;
+    this.isAllCleared = false;
     this.touchLeft = false;
     this.touchRight = false;
     this.touchJumpRequested = false;
@@ -84,7 +102,7 @@ export class GameScene extends Phaser.Scene {
     this.touchMoveBaseX = null;
     this.coinsCollected = 0;
 
-    const stage = STAGE_01;
+    const stage = this.stage;
     const worldWidth = stage.cols * TILE_SIZE;
     const worldHeight = stage.rows * TILE_SIZE;
 
@@ -142,6 +160,16 @@ export class GameScene extends Phaser.Scene {
       })
       .setScrollFactor(0);
 
+    this.stageHud = this.add
+      .text(0, 0, this.formatStageHud(), {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: HUD_FONT_SIZE,
+        color: HUD_FONT_COLOR,
+        stroke: HUD_STROKE_COLOR,
+        strokeThickness: HUD_STROKE_THICKNESS
+      })
+      .setScrollFactor(0);
+
     const updateAll = () => {
       const zoom = Math.min(
         this.scale.width / VIEWPORT_WIDTH,
@@ -160,11 +188,17 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard!.once('keydown', () => { this.audio.unlock(); });
     this.audio.startBgm();
     this.events.once('shutdown', () => { this.audio.destroy(); });
+
+    this.cameras.main.fadeIn(STAGE_FADE_MS);
   }
 
   update(): void {
     if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-      this.fullRestart();
+      if (this.isAllCleared) {
+        this.restartFromTop();
+      } else {
+        this.fullRestart();
+      }
       return;
     }
 
@@ -423,12 +457,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fullRestart(): void {
-    // scene.restart() / scene.start('BootScene') のいずれでも 2 回目以降の
-    // 床貫通バグが再現したため、最終手段として window.location.reload() で
-    // ページ全体を再ロードする。Phaser のシーンマネージャ・物理ワールド・
-    // テクスチャマネージャがすべて初期状態から再構築される。
-    // 副作用: リスタートに数百 ms 〜 1 秒程度のロード待ちが発生する。
-    window.location.reload();
+    if (USE_HARD_RELOAD_FALLBACK) {
+      try {
+        sessionStorage.setItem(STAGE_INDEX_STORAGE_KEY, String(this.stageIndex));
+      } catch { /* sessionStorage 利用不可時は無視 */ }
+      window.location.reload();
+      return;
+    }
+    this.teardownPhysics();
+    this.scene.restart({ stageIndex: this.stageIndex });
   }
 
   private onGoalHit = (): void => {
@@ -438,11 +475,36 @@ export class GameScene extends Phaser.Scene {
     this.audio.stopBgm(BGM_FADE_OUT_MS);
     this.player.setVelocity(0, 0);
 
+    const next = nextStageIndex(this.stageIndex);
+    if (next === null) {
+      this.showAllClear();
+      return;
+    }
+
+    this.showStageClear();
+
+    this.time.delayedCall(STAGE_CLEAR_DELAY_MS, () => {
+      this.cameras.main.fadeOut(STAGE_FADE_MS, 0, 0, 0);
+
+      let transitioned = false;
+      const doTransition = () => {
+        if (transitioned) return;
+        transitioned = true;
+        this.transitionToStage(next);
+      };
+
+      this.cameras.main.once('camerafadeoutcomplete', doTransition);
+      // カメライベントが発火しない場合のセーフティタイマー
+      this.time.delayedCall(STAGE_FADE_MS + 200, doTransition);
+    });
+  };
+
+  private showStageClear(): void {
     this.add
       .text(
         this.scale.width / 2,
         this.scale.height / 2,
-        `クリア！\n${this.formatCoinHud()}\nR またはタップで最初から`,
+        `STAGE ${this.stageIndex + 1} CLEAR!\n${this.formatCoinHud()}`,
         {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '44px',
@@ -454,7 +516,57 @@ export class GameScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setScrollFactor(0);
-  };
+  }
+
+  private showAllClear(): void {
+    this.isAllCleared = true;
+    this.add
+      .text(
+        this.scale.width / 2,
+        this.scale.height / 2,
+        `ALL CLEAR!\n${this.formatCoinHud()}\nR またはタップでステージ 1 へ`,
+        {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '44px',
+          color: '#ffff00',
+          stroke: '#000000',
+          strokeThickness: 6,
+          align: 'center'
+        }
+      )
+      .setOrigin(0.5)
+      .setScrollFactor(0);
+  }
+
+  private teardownPhysics(): void {
+    this.physics.world.colliders.destroy();
+    if (this.coins) this.coins.clear(true, true);
+    if (this.enemies) this.enemies.clear(true, true);
+  }
+
+  private transitionToStage(index: number): void {
+    if (USE_HARD_RELOAD_FALLBACK) {
+      try {
+        sessionStorage.setItem(STAGE_INDEX_STORAGE_KEY, String(index));
+      } catch { /* sessionStorage 利用不可時は無視 */ }
+      window.location.reload();
+      return;
+    }
+    this.teardownPhysics();
+    this.scene.restart({ stageIndex: index });
+  }
+
+  private restartFromTop(): void {
+    if (USE_HARD_RELOAD_FALLBACK) {
+      try {
+        sessionStorage.setItem(STAGE_INDEX_STORAGE_KEY, '0');
+      } catch { /* sessionStorage 利用不可時は無視 */ }
+      window.location.reload();
+      return;
+    }
+    this.teardownPhysics();
+    this.scene.restart({ stageIndex: 0 });
+  }
 
   private updateHudPositions(): void {
     const zoom = this.cameras.main.zoom;
@@ -462,8 +574,9 @@ export class GameScene extends Phaser.Scene {
     const hh = this.scale.height / 2;
     const toWorldX = (sx: number) => (sx - (1 - zoom) * hw) / zoom;
     const toWorldY = (sy: number) => (sy - (1 - zoom) * hh) / zoom;
-    this.instructionText.setPosition(toWorldX(16), toWorldY(16));
-    this.coinHud.setPosition(toWorldX(HUD_COIN_X), toWorldY(HUD_COIN_Y));
+    this.stageHud.setPosition(toWorldX(HUD_COIN_X), toWorldY(HUD_STAGE_Y));   // y=16
+    this.coinHud.setPosition(toWorldX(HUD_COIN_X), toWorldY(HUD_COIN_Y));     // y=40
+    this.instructionText.setPosition(toWorldX(16), toWorldY(HUD_COIN_Y + 24)); // y=64
   }
 
   private formatCoinHud(): string {
@@ -472,6 +585,10 @@ export class GameScene extends Phaser.Scene {
 
   private refreshCoinHud(): void {
     this.coinHud.setText(this.formatCoinHud());
+  }
+
+  private formatStageHud(): string {
+    return `${HUD_STAGE_LABEL}: ${this.stageIndex + 1} / ${STAGES.length}`;
   }
 
   private setupTouchControls(): void {
@@ -485,7 +602,10 @@ export class GameScene extends Phaser.Scene {
     this.audio.unlock();
     if (this.isMissed) return;
     if (this.isCleared) {
-      this.fullRestart();
+      if (this.isAllCleared) {
+        this.restartFromTop();
+      }
+      // 通常クリア中（次ステージへの自動遷移待ち）はタップを無視
       return;
     }
 
