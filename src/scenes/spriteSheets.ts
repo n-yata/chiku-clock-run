@@ -14,18 +14,33 @@ function toHex(color: number): string {
   return '#' + color.toString(16).padStart(6, '0');
 }
 
+// drawPlayerFrame は常に 32×48 の座標空間で描画する。
+// フレームサイズが異なる場合は一時キャンバスで描いて drawImage でスケーリングする。
+const PLAYER_DRAW_W = 32;
+const PLAYER_DRAW_H = 48;
+
 export function buildPlayerSheet(scene: Phaser.Scene): void {
   if (scene.textures.exists(TEX_KEY.playerSheet)) return;
-  const frameW = PLAYER_SPRITE_W; // 32
-  const frameH = PLAYER_SPRITE_H; // 48
+  const frameW = PLAYER_SPRITE_W;
+  const frameH = PLAYER_SPRITE_H;
   const canvas = document.createElement('canvas');
   canvas.width  = frameW * 4;
   canvas.height = frameH;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2d context unavailable');
 
+  const tmp = document.createElement('canvas');
+  tmp.width  = PLAYER_DRAW_W;
+  tmp.height = PLAYER_DRAW_H;
+  const tmpCtx = tmp.getContext('2d');
+  if (!tmpCtx) throw new Error('canvas 2d context unavailable');
+
   const frames: PlayerFrame[] = ['idle', 'walk1', 'walk2', 'jump'];
-  frames.forEach((frame, i) => drawPlayerFrame(ctx, i * frameW, frame));
+  frames.forEach((frame, i) => {
+    tmpCtx.clearRect(0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H);
+    drawPlayerFrame(tmpCtx, 0, frame);
+    ctx.drawImage(tmp, 0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H, i * frameW, 0, frameW, frameH);
+  });
 
   const tex = scene.textures.addCanvas(TEX_KEY.playerSheet, canvas);
   if (!tex) throw new Error(`Failed to create texture: ${TEX_KEY.playerSheet}`);

@@ -9,8 +9,8 @@ export const GRAVITY_Y = 800;
 export const PLAYER_SPEED = 200;
 export const JUMP_VELOCITY = -450;
 
-export const PLAYER_SPRITE_W = 32;
-export const PLAYER_SPRITE_H = 48;
+export const PLAYER_SPRITE_W = 40;
+export const PLAYER_SPRITE_H = 56;
 export const GOAL_SPRITE_W = 32;
 export const GOAL_SPRITE_H = 64;
 
