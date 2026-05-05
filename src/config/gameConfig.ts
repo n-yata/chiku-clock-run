@@ -163,10 +163,3 @@ export const TITLE_PROMPT_FONT_SIZE = '24px';
 export const TITLE_PROMPT_OFFSET_Y = 80;
 export const TITLE_PROMPT_BLINK_MS = 500;
 export const ALL_CLEAR_TO_TITLE_DELAY_MS = 2500;
-
-// --- v0.6: 外部スプライトアセット ---
-export const ASSET_PATH_PLAYER = 'assets/images/player.png';
-export const ASSET_PATH_GROUND = 'assets/images/ground.png';
-export const ASSET_PATH_GOAL   = 'assets/images/goal.png';
-export const ASSET_PATH_ENEMY  = 'assets/images/enemy.png';
-export const ASSET_PATH_COIN   = 'assets/images/coin.png';

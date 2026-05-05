@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import {
-  ASSET_PATH_COIN,
-  ASSET_PATH_ENEMY,
-  ASSET_PATH_GOAL,
-  ASSET_PATH_GROUND,
-  ASSET_PATH_PLAYER,
   STAGE_INDEX_STORAGE_KEY,
   TEX_KEY
 } from '../config/gameConfig';
+import playerUrl from '../assets/images/player.png';
+import groundUrl from '../assets/images/ground.png';
+import goalUrl   from '../assets/images/goal.png';
+import enemyUrl  from '../assets/images/enemy.png';
+import coinUrl   from '../assets/images/coin.png';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -18,11 +18,11 @@ export class BootScene extends Phaser.Scene {
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
       console.error(`[BootScene] failed to load asset: ${file.key} (${file.src})`);
     });
-    this.load.image(TEX_KEY.player, ASSET_PATH_PLAYER);
-    this.load.image(TEX_KEY.ground, ASSET_PATH_GROUND);
-    this.load.image(TEX_KEY.goal,   ASSET_PATH_GOAL);
-    this.load.image(TEX_KEY.enemy,  ASSET_PATH_ENEMY);
-    this.load.image(TEX_KEY.coin,   ASSET_PATH_COIN);
+    this.load.image(TEX_KEY.player, playerUrl);
+    this.load.image(TEX_KEY.ground, groundUrl);
+    this.load.image(TEX_KEY.goal,   goalUrl);
+    this.load.image(TEX_KEY.enemy,  enemyUrl);
+    this.load.image(TEX_KEY.coin,   coinUrl);
   }
 
   create(): void {
