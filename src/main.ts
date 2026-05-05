@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { TitleScene } from './scenes/TitleScene';
 import { GameScene } from './scenes/GameScene';
 import { BG_COLOR, GRAVITY_Y } from './config/gameConfig';
 
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.NO_CENTER
   },
-  scene: [BootScene, GameScene]
+  scene: [BootScene, TitleScene, GameScene]
 };
 
 const game = new Phaser.Game(config);

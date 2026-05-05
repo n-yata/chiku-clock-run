@@ -55,16 +55,24 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     let stageIndex = 0;
+    let hasStoredIndex = false;
     try {
       const stored = sessionStorage.getItem(STAGE_INDEX_STORAGE_KEY);
       if (stored !== null) {
         const parsed = Number.parseInt(stored, 10);
         if (Number.isInteger(parsed) && parsed >= 0) {
           stageIndex = parsed;
+          hasStoredIndex = true;
         }
         sessionStorage.removeItem(STAGE_INDEX_STORAGE_KEY);
       }
     } catch { /* sessionStorage 利用不可時は stageIndex=0 のまま */ }
-    this.scene.start('GameScene', { stageIndex });
+
+    if (hasStoredIndex) {
+      // リロードフォールバック経路: sessionStorage にステージ番号が保存されていた場合は直接 GameScene へ
+      this.scene.start('GameScene', { stageIndex });
+    } else {
+      this.scene.start('TitleScene');
+    }
   }
 }

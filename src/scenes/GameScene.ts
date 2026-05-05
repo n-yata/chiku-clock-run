@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  ALL_CLEAR_TO_TITLE_DELAY_MS,
   BGM_FADE_OUT_MS,
   CAMERA_LERP_X,
   CAMERA_LERP_Y,
@@ -524,7 +525,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         this.scale.width / 2,
         this.scale.height / 2,
-        `ALL CLEAR!\n${this.formatCoinHud()}\nR またはタップでステージ 1 へ`,
+        `ALL CLEAR!\n${this.formatCoinHud()}\nタイトルへ戻ります...`,
         {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '44px',
@@ -536,6 +537,9 @@ export class GameScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setScrollFactor(0);
+    this.time.delayedCall(ALL_CLEAR_TO_TITLE_DELAY_MS, () => {
+      this.scene.start('TitleScene');
+    }, [], this);
   }
 
   private teardownPhysics(): void {
@@ -565,7 +569,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.teardownPhysics();
-    this.scene.restart({ stageIndex: 0 });
+    this.scene.start('TitleScene');
   }
 
   private updateHudPositions(): void {

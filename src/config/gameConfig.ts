@@ -150,3 +150,16 @@ export const STAGE_INDEX_STORAGE_KEY = 'mario-game.stageIndex';
 export const HUD_STAGE_Y = 16;
 /** HUD ステージ表示ラベル */
 export const HUD_STAGE_LABEL = 'STAGE';
+
+// --- v0.5: タイトル画面 ---
+export const GAME_TITLE = 'MARIO-LIKE GAME';
+export const TITLE_FONT_FAMILY = 'system-ui, sans-serif';
+export const TITLE_FONT_SIZE = '72px';
+export const TITLE_FONT_COLOR = '#ffffff';
+export const TITLE_STROKE_COLOR = '#000000';
+export const TITLE_STROKE_THICKNESS = 8;
+export const TITLE_PROMPT_TEXT = 'Press SPACE / Tap to Start';
+export const TITLE_PROMPT_FONT_SIZE = '24px';
+export const TITLE_PROMPT_OFFSET_Y = 80;
+export const TITLE_PROMPT_BLINK_MS = 500;
+export const ALL_CLEAR_TO_TITLE_DELAY_MS = 2500;
