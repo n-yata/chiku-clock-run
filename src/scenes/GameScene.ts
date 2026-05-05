@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private coinTotal = 0;
   private coinsCollected = 0;
   private coinHud!: Phaser.GameObjects.Text;
+  private instructionText!: Phaser.GameObjects.Text;
   private groundMask: ReadonlyArray<ReadonlyArray<boolean>> = [];
   private audio!: AudioManager;
 
@@ -118,20 +119,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.startFollow(this.player, true, CAMERA_LERP_X, CAMERA_LERP_Y);
 
-    const updateZoom = () => {
-      const zoom = Math.min(
-        this.scale.width / VIEWPORT_WIDTH,
-        this.scale.height / VIEWPORT_HEIGHT
-      );
-      this.cameras.main.setZoom(zoom);
-    };
-    updateZoom();
-    this.scale.on(Phaser.Scale.Events.RESIZE, updateZoom);
-
-    this.add
+    this.instructionText = this.add
       .text(
-        16,
-        16,
+        0,
+        0,
         'PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ',
         {
           fontFamily: 'system-ui, sans-serif',
@@ -142,7 +133,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0);
 
     this.coinHud = this.add
-      .text(HUD_COIN_X, HUD_COIN_Y, this.formatCoinHud(), {
+      .text(0, 0, this.formatCoinHud(), {
         fontFamily: 'system-ui, sans-serif',
         fontSize: HUD_FONT_SIZE,
         color: HUD_FONT_COLOR,
@@ -150,6 +141,17 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: HUD_STROKE_THICKNESS
       })
       .setScrollFactor(0);
+
+    const updateAll = () => {
+      const zoom = Math.min(
+        this.scale.width / VIEWPORT_WIDTH,
+        this.scale.height / VIEWPORT_HEIGHT
+      );
+      this.cameras.main.setZoom(zoom);
+      this.updateHudPositions();
+    };
+    updateAll();
+    this.scale.on(Phaser.Scale.Events.RESIZE, updateAll);
 
     this.input.addPointer(2);
     this.setupTouchControls();
@@ -453,6 +455,16 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0);
   };
+
+  private updateHudPositions(): void {
+    const zoom = this.cameras.main.zoom;
+    const hw = this.scale.width / 2;
+    const hh = this.scale.height / 2;
+    const toWorldX = (sx: number) => (sx - (1 - zoom) * hw) / zoom;
+    const toWorldY = (sy: number) => (sy - (1 - zoom) * hh) / zoom;
+    this.instructionText.setPosition(toWorldX(16), toWorldY(16));
+    this.coinHud.setPosition(toWorldX(HUD_COIN_X), toWorldY(HUD_COIN_Y));
+  }
 
   private formatCoinHud(): string {
     return `${HUD_COIN_LABEL}: ${this.coinsCollected} / ${this.coinTotal}`;
