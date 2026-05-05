@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-04 |
+| 最終更新 | 2026-05-05 |
 | 担当 | バルベルデ |
 | ステータス | 承認済み |
 
@@ -17,7 +17,11 @@
 graph LR
     U[ユーザーブラウザ] -->|HTTPS GET| P[GitHub Pages]
     P -->|HTML / JS / SourceMap| U
-    U -->|Phaser 3 実行| G[GameScene]
+    U -->|Phaser 3 実行| B[BootScene]
+    B -->|通常起動| T[TitleScene]
+    B -->|リロード復帰| G[GameScene]
+    T -->|SPACE / Enter / Tap| G
+    G -->|全クリア後自動 / R キー| T
 ```
 
 ```
@@ -41,13 +45,21 @@ graph LR
 sequenceDiagram
     participant U as ユーザー
     participant BS as BootScene
+    participant TS as TitleScene
     participant GS as GameScene
 
     U->>BS: URL アクセス（ページロード）
     BS->>BS: preload(): Graphics.generateTexture() × 5種
     Note over BS: player / ground / goal / enemy / coin
-    BS->>GS: create(): scene.start('GameScene')
-    GS->>GS: buildStage(STAGE_01)
+    alt 通常起動（sessionStorage キーなし）
+        BS->>TS: create(): scene.start('TitleScene')
+        TS-->>U: タイトル + プロンプト表示（点滅）
+        U->>TS: SPACE / Enter / Tap
+        TS->>GS: scene.start('GameScene', { stageIndex: 0 })
+    else リロードフォールバック（sessionStorage キーあり）
+        BS->>GS: scene.start('GameScene', { stageIndex: N })
+    end
+    GS->>GS: buildStage(stage)
     Note over GS: タイル文字列をパース→地形/ゴール/敵/コインを配置
     GS->>GS: Arcade Physics コライダー / Overlap 登録
     GS->>GS: カメラ追従・HUD テキスト・タッチイベント セットアップ
@@ -87,10 +99,11 @@ sequenceDiagram
 | コンポーネント | ファイル | 責務 |
 |-------------|---------|------|
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| BootScene | `src/scenes/BootScene.ts` | `Graphics.generateTexture()` で 5 種のプレースホルダテクスチャを生成し `GameScene` へ遷移 |
-| GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI / コイン取得 / スコア HUD / ミス演出 / ゴール判定 / リスタート |
-| ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイルの単一集約点。マジックナンバー禁止 |
-| ステージ定義 | `src/stages/stage01.ts` | `StageDefinition` 型 + `STAGE_01` 定数。タイル文字列による 2 次元配列でステージを定義 |
+| BootScene | `src/scenes/BootScene.ts` | `Graphics.generateTexture()` で 5 種のプレースホルダテクスチャを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
+| TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
+| GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI / コイン取得 / スコア HUD / ミス演出 / ゴール判定 / 全クリア後 `TitleScene` 遷移 |
+| ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
+| ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
 
 ### バックエンド層
 
@@ -187,11 +200,14 @@ interface BuiltStage {
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Playing : BootScene → GameScene 遷移
+    [*] --> Title : BootScene → TitleScene 遷移
+    Title --> Playing : SPACE / Enter / Tap
     Playing --> Cleared : ゴール Overlap
     Playing --> Missed : 敵横・下接触 / 落下（y > FALL_THRESHOLD_Y）
-    Missed --> [*] : MISS_FLASH_MS 後 window.location.reload()
-    Cleared --> [*] : R キー / タッチ → window.location.reload()
+    Missed --> Playing : MISS_FLASH_MS 後 scene.restart（同ステージ）
+    Cleared --> Playing : 次ステージへ fadeOut → scene.restart
+    Cleared --> Title : 全クリア → ALL_CLEAR_TO_TITLE_DELAY_MS 後 scene.start('TitleScene')
+    Playing --> Title : R キー（restartFromTop）
 ```
 
 - `isCleared` / `isMissed` フラグが立った後は `update()` でプレイヤー速度を 0 に固定
