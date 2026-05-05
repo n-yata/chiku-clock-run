@@ -3,11 +3,10 @@ import {
   STAGE_INDEX_STORAGE_KEY,
   TEX_KEY
 } from '../config/gameConfig';
-import playerUrl from '../assets/images/player.png';
 import groundUrl from '../assets/images/ground.png';
 import goalUrl   from '../assets/images/goal.png';
-import enemyUrl  from '../assets/images/enemy.png';
 import coinUrl   from '../assets/images/coin.png';
+import { buildPlayerSheet, buildEnemySheet } from './spriteSheets';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -18,14 +17,15 @@ export class BootScene extends Phaser.Scene {
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
       console.error(`[BootScene] failed to load asset: ${file.key} (${file.src})`);
     });
-    this.load.image(TEX_KEY.player, playerUrl);
     this.load.image(TEX_KEY.ground, groundUrl);
     this.load.image(TEX_KEY.goal,   goalUrl);
-    this.load.image(TEX_KEY.enemy,  enemyUrl);
     this.load.image(TEX_KEY.coin,   coinUrl);
   }
 
   create(): void {
+    buildPlayerSheet(this);
+    buildEnemySheet(this);
+
     let stageIndex = 0;
     let hasStoredIndex = false;
     try {

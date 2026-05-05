@@ -19,16 +19,29 @@ export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
 export const BG_COLOR = '#5c94fc';
 
 export const PLAYER_COLOR = 0xc0392b;
+export const PLAYER_SKIN_COLOR    = 0xffd6a8;
+export const PLAYER_OVERALL_COLOR = 0x2e3aa8;
+export const PLAYER_SHOE_COLOR    = 0x6b4226;
 export const GROUND_COLOR = 0x8b4513;
 export const GOAL_COLOR = 0xffd700;
 
 export const TEX_KEY = {
-  player: 'player',
+  playerSheet: 'player_sheet',
   ground: 'ground',
   goal: 'goal',
-  enemy: 'enemy',
+  enemySheet: 'enemy_sheet',
   coin: 'coin'
 } as const;
+
+export const ANIM_KEY = {
+  playerIdle: 'player_idle',
+  playerWalk: 'player_walk',
+  playerJump: 'player_jump',
+  enemyWalk:  'enemy_walk'
+} as const;
+
+export const PLAYER_ANIM_WALK_FPS = 8;
+export const ENEMY_ANIM_WALK_FPS = 6;
 
 export const CAMERA_LERP_X = 0.1;
 export const CAMERA_LERP_Y = 0.1;
@@ -40,16 +53,16 @@ export const TOUCH_SLIDE_THRESHOLD_PX = 12;
 export const TOUCH_ZONE_SPLIT_RATIO = 0.5;
 
 // --- v0.2: 敵 (Enemy) ---
-export const ENEMY_SPRITE_W = 36;
-export const ENEMY_SPRITE_H = 36;
+export const ENEMY_SPRITE_W = 44;
+export const ENEMY_SPRITE_H = 44;
 export const ENEMY_COLOR = 0x8b572a;
+export const ENEMY_DARK_COLOR = 0x5a3818;
 export const ENEMY_SPEED = 60;
 export const STOMP_BOUNCE_VELOCITY = -280;
-export const STOMP_TOLERANCE_PX = 6;
 
 // --- v0.2: コイン (Coin) ---
-export const COIN_SPRITE_W = 24;
-export const COIN_SPRITE_H = 24;
+export const COIN_SPRITE_W = 32;
+export const COIN_SPRITE_H = 32;
 export const COIN_COLOR = 0xf1c40f;
 
 // --- v0.2: ミス演出 ---

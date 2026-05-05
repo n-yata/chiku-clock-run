@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   ALL_CLEAR_TO_TITLE_DELAY_MS,
+  ANIM_KEY,
   BGM_FADE_OUT_MS,
   CAMERA_LERP_X,
   CAMERA_LERP_Y,
@@ -26,12 +27,10 @@ import {
   MISS_FLASH_MS,
   PLAYER_SPEED,
   PLAYER_SPRITE_H,
-  PLAYER_SPRITE_W,
   STAGE_CLEAR_DELAY_MS,
   STAGE_FADE_MS,
   STAGE_INDEX_STORAGE_KEY,
   STOMP_BOUNCE_VELOCITY,
-  STOMP_TOLERANCE_PX,
   TEX_KEY,
   TILE_SIZE,
   TOUCH_SLIDE_THRESHOLD_PX,
@@ -42,6 +41,7 @@ import {
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
 import { getStage, nextStageIndex, STAGES, type StageDefinition } from '../stages/index';
+import { registerAnimations } from './animations';
 
 interface BuiltStage {
   ground: Phaser.Physics.Arcade.StaticGroup;
@@ -121,8 +121,7 @@ export class GameScene extends Phaser.Scene {
     this.coinTotal = built.coinTotal;
     this.groundMask = built.groundMask;
 
-    this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.player);
-    this.player.setDisplaySize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
+    this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.playerSheet, 'idle');
     this.player.setCollideWorldBounds(false);
 
     this.physics.add.collider(this.player, built.ground);
@@ -195,6 +194,9 @@ export class GameScene extends Phaser.Scene {
     this.audio.startBgm();
     this.events.once('shutdown', () => { this.audio.destroy(); });
 
+    registerAnimations(this);
+    this.player.anims.play(ANIM_KEY.playerIdle, true);
+
     this.cameras.main.fadeIn(STAGE_FADE_MS);
   }
 
@@ -233,6 +235,22 @@ export class GameScene extends Phaser.Scene {
       this.audio.playSe('jump');
     }
     this.touchJumpRequested = false;
+
+    // アニメーション状態遷移
+    if (this.isCleared || this.isMissed) {
+      this.player.anims.play(ANIM_KEY.playerIdle, true);
+    } else if (!onGround) {
+      this.player.anims.play(ANIM_KEY.playerJump, true);
+    } else if (Math.abs(this.player.body!.velocity.x) > 0.1) {
+      this.player.anims.play(ANIM_KEY.playerWalk, true);
+    } else {
+      this.player.anims.play(ANIM_KEY.playerIdle, true);
+    }
+
+    // 向き反転
+    const vx = this.player.body!.velocity.x;
+    if (vx < -0.1) this.player.setFlipX(true);
+    else if (vx > 0.1) this.player.setFlipX(false);
 
     this.updateEnemyAi();
 
@@ -373,10 +391,10 @@ export class GameScene extends Phaser.Scene {
     for (const p of positions) {
       const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
       const cy = (p.row + 1) * TILE_SIZE - ENEMY_SPRITE_H / 2;
-      const enemy = group.create(cx, cy, TEX_KEY.enemy) as Phaser.Physics.Arcade.Sprite;
-      enemy.setDisplaySize(ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+      const enemy = group.create(cx, cy, TEX_KEY.enemySheet, 'enemy_walk1') as Phaser.Physics.Arcade.Sprite;
       enemy.setData('dir', -1 satisfies EnemyDir);
       enemy.setVelocityX(-ENEMY_SPEED);
+      enemy.anims.play(ANIM_KEY.enemyWalk, true);
       enemy.setCollideWorldBounds(false);
     }
     return group;
@@ -429,6 +447,7 @@ export class GameScene extends Phaser.Scene {
       enemy.setData('dir', dir);
       // 速度を毎フレーム強制し、衝突後の速度ゼロ化事故を防ぐ
       enemy.setVelocityX(dir * ENEMY_SPEED);
+      enemy.setFlipX(dir > 0);
       return true;
     });
   }
@@ -447,7 +466,7 @@ export class GameScene extends Phaser.Scene {
     const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
     const eBody = eSprite.body as Phaser.Physics.Arcade.Body;
     const isStomp =
-      pBody.velocity.y > 0 && pBody.bottom <= eBody.top + STOMP_TOLERANCE_PX;
+      pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
     if (isStomp) {
       eSprite.disableBody(true, true);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
