@@ -4,11 +4,14 @@ import {
   BGM_FADE_OUT_MS,
   CAMERA_LERP_X,
   CAMERA_LERP_Y,
+  COIN_SPRITE_H,
+  COIN_SPRITE_W,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
   ENEMY_SPRITE_W,
   FALL_THRESHOLD_Y,
   GOAL_SPRITE_H,
+  GOAL_SPRITE_W,
   HUD_COIN_LABEL,
   HUD_COIN_X,
   HUD_COIN_Y,
@@ -23,6 +26,7 @@ import {
   MISS_FLASH_MS,
   PLAYER_SPEED,
   PLAYER_SPRITE_H,
+  PLAYER_SPRITE_W,
   STAGE_CLEAR_DELAY_MS,
   STAGE_FADE_MS,
   STAGE_INDEX_STORAGE_KEY,
@@ -118,6 +122,7 @@ export class GameScene extends Phaser.Scene {
     this.groundMask = built.groundMask;
 
     this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.player);
+    this.player.setDisplaySize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     this.player.setCollideWorldBounds(false);
 
     this.physics.add.collider(this.player, built.ground);
@@ -316,6 +321,7 @@ export class GameScene extends Phaser.Scene {
             r * TILE_SIZE + TILE_SIZE / 2,
             TEX_KEY.ground
           ) as Phaser.Physics.Arcade.Sprite;
+          tile.setDisplaySize(TILE_SIZE, TILE_SIZE);
           tile.refreshBody();
         }
       }
@@ -328,6 +334,7 @@ export class GameScene extends Phaser.Scene {
       (goalRow + 1) * TILE_SIZE - GOAL_SPRITE_H / 2,
       TEX_KEY.goal
     );
+    goal.setDisplaySize(GOAL_SPRITE_W, GOAL_SPRITE_H);
     goal.refreshBody();
 
     const groundMask = this.buildGroundMask(def);
@@ -367,6 +374,7 @@ export class GameScene extends Phaser.Scene {
       const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
       const cy = (p.row + 1) * TILE_SIZE - ENEMY_SPRITE_H / 2;
       const enemy = group.create(cx, cy, TEX_KEY.enemy) as Phaser.Physics.Arcade.Sprite;
+      enemy.setDisplaySize(ENEMY_SPRITE_W, ENEMY_SPRITE_H);
       enemy.setData('dir', -1 satisfies EnemyDir);
       enemy.setVelocityX(-ENEMY_SPEED);
       enemy.setCollideWorldBounds(false);
@@ -383,6 +391,7 @@ export class GameScene extends Phaser.Scene {
       const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
       const cy = p.row * TILE_SIZE + TILE_SIZE / 2;
       const coin = group.create(cx, cy, TEX_KEY.coin) as Phaser.Physics.Arcade.Sprite;
+      coin.setDisplaySize(COIN_SPRITE_W, COIN_SPRITE_H);
       coin.refreshBody();
     }
     return { group, total: positions.length };

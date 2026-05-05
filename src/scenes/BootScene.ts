@@ -1,21 +1,12 @@
 import Phaser from 'phaser';
 import {
-  COIN_COLOR,
-  COIN_SPRITE_H,
-  COIN_SPRITE_W,
-  ENEMY_COLOR,
-  ENEMY_SPRITE_H,
-  ENEMY_SPRITE_W,
-  GOAL_COLOR,
-  GOAL_SPRITE_H,
-  GOAL_SPRITE_W,
-  GROUND_COLOR,
-  PLAYER_COLOR,
-  PLAYER_SPRITE_H,
-  PLAYER_SPRITE_W,
+  ASSET_PATH_COIN,
+  ASSET_PATH_ENEMY,
+  ASSET_PATH_GOAL,
+  ASSET_PATH_GROUND,
+  ASSET_PATH_PLAYER,
   STAGE_INDEX_STORAGE_KEY,
-  TEX_KEY,
-  TILE_SIZE
+  TEX_KEY
 } from '../config/gameConfig';
 
 export class BootScene extends Phaser.Scene {
@@ -24,33 +15,14 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const g = this.add.graphics();
-
-    g.fillStyle(PLAYER_COLOR, 1);
-    g.fillRect(0, 0, PLAYER_SPRITE_W, PLAYER_SPRITE_H);
-    g.generateTexture(TEX_KEY.player, PLAYER_SPRITE_W, PLAYER_SPRITE_H);
-    g.clear();
-
-    g.fillStyle(GROUND_COLOR, 1);
-    g.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-    g.generateTexture(TEX_KEY.ground, TILE_SIZE, TILE_SIZE);
-    g.clear();
-
-    g.fillStyle(GOAL_COLOR, 1);
-    g.fillRect(0, 0, GOAL_SPRITE_W, GOAL_SPRITE_H);
-    g.generateTexture(TEX_KEY.goal, GOAL_SPRITE_W, GOAL_SPRITE_H);
-    g.clear();
-
-    g.fillStyle(ENEMY_COLOR, 1);
-    g.fillRect(0, 0, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
-    g.generateTexture(TEX_KEY.enemy, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
-    g.clear();
-
-    // コインは円形で描画してゴール（黄色矩形）と形でも区別する
-    g.fillStyle(COIN_COLOR, 1);
-    g.fillCircle(COIN_SPRITE_W / 2, COIN_SPRITE_H / 2, COIN_SPRITE_W / 2);
-    g.generateTexture(TEX_KEY.coin, COIN_SPRITE_W, COIN_SPRITE_H);
-    g.destroy();
+    this.load.on('loaderror', (file: Phaser.Loader.File) => {
+      console.error(`[BootScene] failed to load asset: ${file.key} (${file.src})`);
+    });
+    this.load.image(TEX_KEY.player, ASSET_PATH_PLAYER);
+    this.load.image(TEX_KEY.ground, ASSET_PATH_GROUND);
+    this.load.image(TEX_KEY.goal,   ASSET_PATH_GOAL);
+    this.load.image(TEX_KEY.enemy,  ASSET_PATH_ENEMY);
+    this.load.image(TEX_KEY.coin,   ASSET_PATH_COIN);
   }
 
   create(): void {
