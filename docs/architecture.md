@@ -111,7 +111,9 @@
 - v0.2（実装済み）: 敵キャラクター 4 体（踏みつけ撃破 / 段差端反転 AI）・コイン 15 枚・スコア HUD・ミス演出（白フラッシュ → `window.location.reload()`）
 - モバイル操作改善（実装済み）: 左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理。縦向き時の横向き促進オーバーレイ（CSS `@media orientation`）・ピンチズーム無効化
 - v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）+ 16 ステップアルペジオ BGM。iOS Safari unlock 対応。バンドルサイズ +4 kB のみ
-- v0.4 以降: 複数ステージ、タイトル画面、ライフ / パワーアップ、音量調整 UI
-- 複数ステージ追加時: `src/stages/` にファイル追加 + ステージ選択 UI
+- v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
+- v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
+- v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を `public/assets/images/` に配置。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更。アセットパスは `gameConfig.ts` の `ASSET_PATH_*` 定数に集約
+- 今後の拡張: ライフ / パワーアップ、音量調整 UI、スプライトアニメーション化、背景画像追加
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）
-- アセット差し替え: `BootScene` の `generateTexture()` を `this.load.image()` に置換するだけで対応可（`TEX_KEY` で抽象化済み）
+- アセット追加: `public/assets/images/` に PNG を追加し `gameConfig.ts` の `ASSET_PATH_*` 定数を追記するだけで対応可

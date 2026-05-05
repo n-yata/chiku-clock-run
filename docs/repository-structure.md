@@ -21,6 +21,15 @@ mario-game/
 │       ├── stage01.ts            # STAGE_01 定数（StageDefinition 型）
 │       ├── stage02.ts            # STAGE_02 定数
 │       └── stage03.ts            # STAGE_03 定数
+├── public/                       # Vite 静的ファイル（dist/ にそのままコピー）
+│   └── assets/
+│       └── images/               # スプライト PNG（Kenney "Pixel Platformer" CC0）
+│           ├── player.png        # プレイヤーキャラクター（24×24 → 32×48 表示）
+│           ├── ground.png        # 地面タイル（18×18 → 32×32 表示）
+│           ├── goal.png          # ゴール旗（18×18 → 32×64 表示）
+│           ├── enemy.png         # 敵キャラクター（24×24 → 28×28 表示）
+│           ├── coin.png          # コイン（18×18 → 16×16 表示）
+│           └── KENNEY_LICENSE.txt  # CC0 ライセンス原文
 ├── index.html                    # Vite エントリ HTML（CSP `<meta>` 含む）
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 設定
