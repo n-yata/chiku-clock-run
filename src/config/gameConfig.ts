@@ -217,6 +217,7 @@ export const ALL_CLEAR_TO_TITLE_DELAY_MS = 2500;
 // --- v0.9: ライフ / パワーアップ ---
 export const INITIAL_LIVES = 3;
 export const MIN_LIVES = 0;
+export const MAX_LIVES = 99;
 export const INVINCIBLE_MS = 1500;
 export const INVINCIBLE_BLINK_MS = 100;
 export const BIG_SCALE = 1.5;

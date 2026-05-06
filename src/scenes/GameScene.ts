@@ -49,6 +49,7 @@ import {
   INVINCIBLE_BLINK_MS,
   INVINCIBLE_MS,
   JUMP_VELOCITY,
+  MAX_LIVES,
   MIN_LIVES,
   MISS_FLASH_COLOR,
   MISS_FLASH_MS,
@@ -158,7 +159,8 @@ export class GameScene extends Phaser.Scene {
     const resolved = getStage(data?.stageIndex ?? 0);
     this.stageIndex = resolved.index;
     this.stage = resolved.stage;
-    this.lives = Math.max(MIN_LIVES, data?.lives ?? INITIAL_LIVES);
+    const incomingLives = data?.lives ?? INITIAL_LIVES;
+    this.lives = Math.min(MAX_LIVES, Math.max(MIN_LIVES, Number.isFinite(incomingLives) ? Math.floor(incomingLives) : INITIAL_LIVES));
     const incoming = data?.playerState;
     this.playerState = (incoming === 'small' || incoming === 'big' || incoming === 'fire')
       ? incoming : 'small';

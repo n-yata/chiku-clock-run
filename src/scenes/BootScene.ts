@@ -7,6 +7,7 @@ import groundUrl from '../assets/images/ground.png';
 import goalUrl   from '../assets/images/goal.png';
 import coinUrl   from '../assets/images/coin.png';
 import { buildPlayerSheet, buildEnemySheet, buildMushroomSheet, buildFireflowerSheet, buildStarSheet, buildFireballSheet } from './spriteSheets';
+import { STAGES } from '../stages/index';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -36,7 +37,7 @@ export class BootScene extends Phaser.Scene {
       const stored = sessionStorage.getItem(STAGE_INDEX_STORAGE_KEY);
       if (stored !== null) {
         const parsed = Number.parseInt(stored, 10);
-        if (Number.isInteger(parsed) && parsed >= 0) {
+        if (Number.isInteger(parsed) && parsed >= 0 && parsed < STAGES.length) {
           stageIndex = parsed;
           hasStoredIndex = true;
         }
