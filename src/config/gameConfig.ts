@@ -25,13 +25,18 @@ export const PLAYER_SHOE_COLOR    = 0x6b4226;
 export const GROUND_COLOR = 0x8b4513;
 export const GOAL_COLOR = 0xffd700;
 
+export type PlayerState = 'small' | 'big' | 'fire';
+
 export const TEX_KEY = {
   playerSheet: 'player_sheet',
   ground: 'ground',
   goal: 'goal',
   enemySheet: 'enemy_sheet',
   coin: 'coin',
-  mushroom: 'mushroom'
+  mushroom: 'mushroom',
+  fireflower: 'fireflower',
+  star: 'star',
+  fireball: 'fireball'
 } as const;
 
 export const ANIM_KEY = {
@@ -101,7 +106,7 @@ export interface SeDefinition {
 export const AUDIO_MASTER_GAIN = 0.5;
 export const AUDIO_BGM_GAIN = 0.6;
 
-export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal' | 'mushroom', SeDefinition> = {
+export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal' | 'mushroom' | 'powerup' | 'fireball' | 'star', SeDefinition> = {
   jump: {
     steps: [
       { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
@@ -137,6 +142,29 @@ export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal' | 'mu
       { freqStart: 659,  freqEnd: 659,  durationSec: 0.08, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.08 },
       { freqStart: 784,  freqEnd: 784,  durationSec: 0.10, attackSec: 0.003, peakGain: 0.32, waveform: 'square', offsetSec: 0.16 },
       { freqStart: 1047, freqEnd: 1319, durationSec: 0.18, attackSec: 0.003, peakGain: 0.35, waveform: 'square', offsetSec: 0.26 }
+    ]
+  },
+  powerup: {
+    steps: [
+      { freqStart: 523,  freqEnd: 523,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.00 },
+      { freqStart: 659,  freqEnd: 659,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.06 },
+      { freqStart: 784,  freqEnd: 784,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.32, waveform: 'square', offsetSec: 0.12 },
+      { freqStart: 1047, freqEnd: 1047, durationSec: 0.06, attackSec: 0.003, peakGain: 0.34, waveform: 'square', offsetSec: 0.18 },
+      { freqStart: 1568, freqEnd: 1976, durationSec: 0.20, attackSec: 0.003, peakGain: 0.38, waveform: 'square', offsetSec: 0.24 }
+    ]
+  },
+  fireball: {
+    steps: [
+      { freqStart: 880, freqEnd: 1760, durationSec: 0.08, attackSec: 0.002, peakGain: 0.25, waveform: 'square', offsetSec: 0 }
+    ]
+  },
+  star: {
+    steps: [
+      { freqStart: 784,  freqEnd: 784,  durationSec: 0.05, attackSec: 0.002, peakGain: 0.28, waveform: 'square',   offsetSec: 0.00 },
+      { freqStart: 988,  freqEnd: 988,  durationSec: 0.05, attackSec: 0.002, peakGain: 0.28, waveform: 'square',   offsetSec: 0.05 },
+      { freqStart: 1175, freqEnd: 1175, durationSec: 0.05, attackSec: 0.002, peakGain: 0.30, waveform: 'square',   offsetSec: 0.10 },
+      { freqStart: 1568, freqEnd: 1568, durationSec: 0.05, attackSec: 0.002, peakGain: 0.32, waveform: 'square',   offsetSec: 0.15 },
+      { freqStart: 1976, freqEnd: 2349, durationSec: 0.25, attackSec: 0.002, peakGain: 0.36, waveform: 'triangle', offsetSec: 0.20 }
     ]
   }
 };
@@ -207,3 +235,38 @@ export const HUD_LIFE_Y = 64;
 export const HUD_INSTRUCTION_Y = 88;
 export const GAME_OVER_TEXT = 'GAME OVER';
 export const GAME_OVER_TO_TITLE_DELAY_MS = 2500;
+
+// --- v1.0: ファイアフラワー / スター ---
+export const FIREBALL_SPEED_X = 360;
+export const FIREBALL_SPEED_Y = -180;
+export const FIREBALL_BOUNCE_Y = 0.7;
+export const FIREBALL_BOUNCE_COUNT = 3;
+export const FIREBALL_LIFETIME_MS = 2500;
+export const FIREBALL_MAX_COUNT = 2;
+export const FIREBALL_COOLDOWN_MS = 200;
+export const FIREBALL_SPRITE_W = 16;
+export const FIREBALL_SPRITE_H = 16;
+export const FIREBALL_BODY_W = 12;
+export const FIREBALL_BODY_H = 12;
+export const FIREBALL_COLOR = 0xff7a00;
+export const FIREBALL_HIGHLIGHT_COLOR = 0xffe066;
+export const STAR_INVINCIBLE_MS = 8000;
+export const STAR_BLINK_MS = 80;
+export const STAR_END_WARNING_MS = 1500;
+export const STAR_SPRITE_W = 28;
+export const STAR_SPRITE_H = 28;
+export const STAR_COLOR = 0xffd23f;
+export const STAR_OUTLINE_COLOR = 0xb37700;
+export const FIREFLOWER_SPRITE_W = 32;
+export const FIREFLOWER_SPRITE_H = 32;
+export const FIREFLOWER_PETAL_COLOR = 0xff5252;
+export const FIREFLOWER_CENTER_COLOR = 0xffe066;
+export const FIREFLOWER_STEM_COLOR = 0x2e8b57;
+export const FIREFLOWER_LEAF_COLOR = 0x4caf50;
+export const PLAYER_FIRE_TINT = 0xffe0a0;
+export const STAGE_FIREFLOWER_MIN = 0;
+export const STAGE_FIREFLOWER_MAX = 3;
+export const STAGE_STAR_MIN = 0;
+export const STAGE_STAR_MAX = 2;
+export const DOUBLE_TAP_MS = 300;
+export const HUD_FIRE_LABEL = 'PC: ←/→ Space/↑ R  [FIRE: Z]   スマホ: スライド移動 / 右タップジャンプ / 右ダブルタップFIRE';

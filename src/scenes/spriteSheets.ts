@@ -7,7 +7,13 @@ import {
   ENEMY_SPRITE_W, ENEMY_SPRITE_H,
   MUSHROOM_SPRITE_W, MUSHROOM_SPRITE_H,
   MUSHROOM_CAP_COLOR, MUSHROOM_DOT_COLOR,
-  MUSHROOM_STEM_COLOR, MUSHROOM_STEM_DARK_COLOR
+  MUSHROOM_STEM_COLOR, MUSHROOM_STEM_DARK_COLOR,
+  FIREFLOWER_SPRITE_W, FIREFLOWER_SPRITE_H,
+  FIREFLOWER_PETAL_COLOR, FIREFLOWER_CENTER_COLOR,
+  FIREFLOWER_STEM_COLOR, FIREFLOWER_LEAF_COLOR,
+  STAR_SPRITE_W, STAR_SPRITE_H,
+  STAR_COLOR, STAR_OUTLINE_COLOR,
+  FIREBALL_COLOR, FIREBALL_HIGHLIGHT_COLOR
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'jump';
@@ -81,6 +87,95 @@ export function buildMushroomSheet(scene: Phaser.Scene): void {
 
   if (!scene.textures.addCanvas(TEX_KEY.mushroom, canvas)) {
     throw new Error(`Failed to create texture: ${TEX_KEY.mushroom}`);
+  }
+}
+
+export function buildFireflowerSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.fireflower)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = FIREFLOWER_SPRITE_W;
+  canvas.height = FIREFLOWER_SPRITE_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 茎
+  ctx.fillStyle = toHex(FIREFLOWER_STEM_COLOR);
+  ctx.fillRect(15, 18, 2, 12);
+  // 葉左
+  ctx.fillStyle = toHex(FIREFLOWER_LEAF_COLOR);
+  ctx.fillRect(10, 22, 5, 2);
+  // 葉右
+  ctx.fillRect(17, 22, 5, 2);
+  // 花びら上
+  ctx.fillStyle = toHex(FIREFLOWER_PETAL_COLOR);
+  ctx.fillRect(13, 2, 6, 6);
+  // 花びら左上
+  ctx.fillRect(6, 6, 6, 6);
+  // 花びら右上
+  ctx.fillRect(20, 6, 6, 6);
+  // 花びら左下
+  ctx.fillRect(8, 13, 5, 5);
+  // 花びら右下
+  ctx.fillRect(19, 13, 5, 5);
+  // 花芯
+  ctx.fillStyle = toHex(FIREFLOWER_CENTER_COLOR);
+  ctx.fillRect(13, 8, 6, 6);
+
+  if (!scene.textures.addCanvas(TEX_KEY.fireflower, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.fireflower}`);
+  }
+}
+
+export function buildStarSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.star)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = STAR_SPRITE_W;
+  canvas.height = STAR_SPRITE_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 輪郭層
+  ctx.fillStyle = toHex(STAR_OUTLINE_COLOR);
+  ctx.fillRect(11, 1, 6, 6);   // 上の点
+  ctx.fillRect(1, 9, 26, 6);   // 横バンド
+  ctx.fillRect(3, 14, 7, 12);  // 左下脚
+  ctx.fillRect(18, 14, 7, 12); // 右下脚
+  // 本体層
+  ctx.fillStyle = toHex(STAR_COLOR);
+  ctx.fillRect(12, 2, 4, 5);   // 上の点
+  ctx.fillRect(2, 10, 24, 4);  // 横バンド
+  ctx.fillRect(4, 14, 5, 11);  // 左下脚
+  ctx.fillRect(19, 14, 5, 11); // 右下脚
+  // ハイライト
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(13, 5, 2, 2);
+
+  if (!scene.textures.addCanvas(TEX_KEY.star, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.star}`);
+  }
+}
+
+export function buildFireballSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.fireball)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 外側オレンジ円
+  ctx.fillStyle = toHex(FIREBALL_COLOR);
+  ctx.beginPath();
+  ctx.arc(8, 8, 7, 0, Math.PI * 2);
+  ctx.fill();
+  // 中心黄ハイライト
+  ctx.fillStyle = toHex(FIREBALL_HIGHLIGHT_COLOR);
+  ctx.beginPath();
+  ctx.arc(8, 8, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (!scene.textures.addCanvas(TEX_KEY.fireball, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.fireball}`);
   }
 }
 

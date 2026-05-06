@@ -6,7 +6,7 @@ import {
 import groundUrl from '../assets/images/ground.png';
 import goalUrl   from '../assets/images/goal.png';
 import coinUrl   from '../assets/images/coin.png';
-import { buildPlayerSheet, buildEnemySheet, buildMushroomSheet } from './spriteSheets';
+import { buildPlayerSheet, buildEnemySheet, buildMushroomSheet, buildFireflowerSheet, buildStarSheet, buildFireballSheet } from './spriteSheets';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -26,6 +26,9 @@ export class BootScene extends Phaser.Scene {
     buildPlayerSheet(this);
     buildEnemySheet(this);
     buildMushroomSheet(this);
+    buildFireflowerSheet(this);
+    buildStarSheet(this);
+    buildFireballSheet(this);
 
     let stageIndex = 0;
     let hasStoredIndex = false;
