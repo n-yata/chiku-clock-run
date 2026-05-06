@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   BG_COLOR,
   GAME_TITLE,
+  INITIAL_LIVES,
   TITLE_FONT_COLOR,
   TITLE_FONT_FAMILY,
   TITLE_FONT_SIZE,
@@ -78,7 +79,7 @@ export class TitleScene extends Phaser.Scene {
   private startGame(): void {
     if (this.isStarting) return;
     this.isStarting = true;
-    this.scene.start('GameScene', { stageIndex: 0 });
+    this.scene.start('GameScene', { stageIndex: 0, lives: INITIAL_LIVES });
   }
 
   private onShutdown(): void {

@@ -4,7 +4,10 @@ import {
   PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_OVERALL_COLOR, PLAYER_SHOE_COLOR,
   ENEMY_COLOR, ENEMY_DARK_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
-  ENEMY_SPRITE_W, ENEMY_SPRITE_H
+  ENEMY_SPRITE_W, ENEMY_SPRITE_H,
+  MUSHROOM_SPRITE_W, MUSHROOM_SPRITE_H,
+  MUSHROOM_CAP_COLOR, MUSHROOM_DOT_COLOR,
+  MUSHROOM_STEM_COLOR, MUSHROOM_STEM_DARK_COLOR
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'jump';
@@ -45,6 +48,40 @@ export function buildPlayerSheet(scene: Phaser.Scene): void {
   const tex = scene.textures.addCanvas(TEX_KEY.playerSheet, canvas);
   if (!tex) throw new Error(`Failed to create texture: ${TEX_KEY.playerSheet}`);
   frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
+}
+
+export function buildMushroomSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.mushroom)) return;
+  const W = MUSHROOM_SPRITE_W;
+  const H = MUSHROOM_SPRITE_H;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 柄（下半分の中央矩形）
+  ctx.fillStyle = toHex(MUSHROOM_STEM_COLOR);
+  ctx.fillRect(10, 18, 12, 12);
+  ctx.fillStyle = toHex(MUSHROOM_STEM_DARK_COLOR);
+  ctx.fillRect(10, 27, 12, 3);
+
+  // 傘（赤いドーム = 段階的に幅を広げた矩形 3 段）
+  ctx.fillStyle = toHex(MUSHROOM_CAP_COLOR);
+  ctx.fillRect(6, 12, 20, 6);
+  ctx.fillRect(4, 8, 24, 4);
+  ctx.fillRect(8, 4, 16, 4);
+
+  // 水玉（白）
+  ctx.fillStyle = toHex(MUSHROOM_DOT_COLOR);
+  ctx.fillRect(8, 10, 4, 4);
+  ctx.fillRect(20, 10, 4, 4);
+  ctx.fillRect(14, 6, 4, 4);
+  ctx.fillRect(13, 14, 6, 3);
+
+  if (!scene.textures.addCanvas(TEX_KEY.mushroom, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.mushroom}`);
+  }
 }
 
 export function buildEnemySheet(scene: Phaser.Scene): void {

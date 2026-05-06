@@ -30,7 +30,8 @@ export const TEX_KEY = {
   ground: 'ground',
   goal: 'goal',
   enemySheet: 'enemy_sheet',
-  coin: 'coin'
+  coin: 'coin',
+  mushroom: 'mushroom'
 } as const;
 
 export const ANIM_KEY = {
@@ -100,7 +101,7 @@ export interface SeDefinition {
 export const AUDIO_MASTER_GAIN = 0.5;
 export const AUDIO_BGM_GAIN = 0.6;
 
-export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal', SeDefinition> = {
+export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal' | 'mushroom', SeDefinition> = {
   jump: {
     steps: [
       { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
@@ -128,6 +129,14 @@ export const SE_PARAMS: Record<'jump' | 'coin' | 'stomp' | 'miss' | 'goal', SeDe
       { freqStart: 659,  freqEnd: 659,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.15 },
       { freqStart: 784,  freqEnd: 784,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.30 },
       { freqStart: 1047, freqEnd: 1047, durationSec: 0.20, attackSec: 0.005, peakGain: 0.40, waveform: 'square', offsetSec: 0.45 }
+    ]
+  },
+  mushroom: {
+    steps: [
+      { freqStart: 523,  freqEnd: 523,  durationSec: 0.08, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0    },
+      { freqStart: 659,  freqEnd: 659,  durationSec: 0.08, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.08 },
+      { freqStart: 784,  freqEnd: 784,  durationSec: 0.10, attackSec: 0.003, peakGain: 0.32, waveform: 'square', offsetSec: 0.16 },
+      { freqStart: 1047, freqEnd: 1319, durationSec: 0.18, attackSec: 0.003, peakGain: 0.35, waveform: 'square', offsetSec: 0.26 }
     ]
   }
 };
@@ -176,3 +185,25 @@ export const TITLE_PROMPT_FONT_SIZE = '24px';
 export const TITLE_PROMPT_OFFSET_Y = 80;
 export const TITLE_PROMPT_BLINK_MS = 500;
 export const ALL_CLEAR_TO_TITLE_DELAY_MS = 2500;
+
+// --- v0.9: ライフ / パワーアップ ---
+export const INITIAL_LIVES = 3;
+export const MIN_LIVES = 0;
+export const INVINCIBLE_MS = 1500;
+export const INVINCIBLE_BLINK_MS = 100;
+export const BIG_SCALE = 1.5;
+export const MUSHROOM_SPRITE_W = 32;
+export const MUSHROOM_SPRITE_H = 32;
+export const MUSHROOM_CAP_COLOR = 0xe53935;
+export const MUSHROOM_DOT_COLOR = 0xffffff;
+export const MUSHROOM_STEM_COLOR = 0xfff1c1;
+export const MUSHROOM_STEM_DARK_COLOR = 0xc9a96e;
+export const STAGE_MUSHROOM_MIN = 0;
+export const STAGE_MUSHROOM_MAX = 5;
+export const HUD_LIFE_LABEL = 'ライフ';
+export const HUD_LIFE_HEART = '♥';
+export const HUD_LIFE_X = 16;
+export const HUD_LIFE_Y = 64;
+export const HUD_INSTRUCTION_Y = 88;
+export const GAME_OVER_TEXT = 'GAME OVER';
+export const GAME_OVER_TO_TITLE_DELAY_MS = 2500;

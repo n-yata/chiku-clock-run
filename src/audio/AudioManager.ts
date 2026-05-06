@@ -12,7 +12,7 @@ import {
   type SeWaveform
 } from '../config/gameConfig';
 
-export type SeKey = 'jump' | 'coin' | 'stomp' | 'miss' | 'goal';
+export type SeKey = 'jump' | 'coin' | 'stomp' | 'miss' | 'goal' | 'mushroom';
 
 export class AudioManager {
   private ctx: AudioContext | null = null;
