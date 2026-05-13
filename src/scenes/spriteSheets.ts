@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import {
   TEX_KEY,
-  PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_OVERALL_COLOR, PLAYER_SHOE_COLOR,
+  PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_SHIRT_COLOR, PLAYER_VEST_COLOR,
+  PLAYER_BRASS_COLOR, PLAYER_GOGGLE_LENS_COLOR, PLAYER_SHOE_COLOR,
   ENEMY_COLOR, ENEMY_DARK_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
   ENEMY_SPRITE_W, ENEMY_SPRITE_H,
@@ -71,22 +72,27 @@ export function buildMushroomSheet(scene: Phaser.Scene): void {
 
   // 柄（下半分の中央矩形）
   ctx.fillStyle = toHex(MUSHROOM_STEM_COLOR);
-  ctx.fillRect(10, 18, 12, 12);
   ctx.fillStyle = toHex(MUSHROOM_STEM_DARK_COLOR);
-  ctx.fillRect(10, 27, 12, 3);
+  ctx.fillRect(12, 12, 8, 18);
+  ctx.fillRect(7, 16, 18, 4);
+  ctx.fillStyle = toHex(MUSHROOM_STEM_COLOR);
+  ctx.fillRect(14, 10, 4, 20);
+  ctx.fillRect(9, 17, 14, 2);
+  ctx.fillStyle = toHex(MUSHROOM_CAP_COLOR);
+  ctx.fillRect(8, 5, 16, 5);
 
   // 傘（赤いドーム = 段階的に幅を広げた矩形 3 段）
   ctx.fillStyle = toHex(MUSHROOM_CAP_COLOR);
-  ctx.fillRect(6, 12, 20, 6);
-  ctx.fillRect(4, 8, 24, 4);
-  ctx.fillRect(8, 4, 16, 4);
+  ctx.fillRect(5, 8, 22, 5);
+  ctx.fillRect(3, 12, 26, 4);
+  ctx.fillRect(5, 16, 22, 3);
 
   // 水玉（白）
   ctx.fillStyle = toHex(MUSHROOM_DOT_COLOR);
-  ctx.fillRect(8, 10, 4, 4);
-  ctx.fillRect(20, 10, 4, 4);
-  ctx.fillRect(14, 6, 4, 4);
-  ctx.fillRect(13, 14, 6, 3);
+  ctx.fillStyle = toHex(MUSHROOM_DOT_COLOR);
+  ctx.fillRect(12, 8, 3, 3);
+  ctx.fillRect(18, 8, 3, 3);
+  ctx.fillRect(15, 13, 3, 2);
 
   if (!scene.textures.addCanvas(TEX_KEY.mushroom, canvas)) {
     throw new Error(`Failed to create texture: ${TEX_KEY.mushroom}`);
@@ -200,86 +206,74 @@ export function buildEnemySheet(scene: Phaser.Scene): void {
   frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
 }
 
-function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
-  // --- 共通パーツ ---
-  // 帽子上面
-  ctx.fillStyle = toHex(PLAYER_COLOR);
-  ctx.fillRect(ox + 7, 4, 18, 4);
-  // 帽子つば
-  ctx.fillRect(ox + 4, 8, 24, 3);
+function drawChikuFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
+  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
+  ctx.fillRect(ox + 5, 21, 22, 11);
 
-  // 顔（肌）
+  ctx.fillStyle = toHex(PLAYER_VEST_COLOR);
+  ctx.fillRect(ox + 8, 21, 16, 13);
+  ctx.fillRect(ox + 6, 24, 4, 8);
+  ctx.fillRect(ox + 22, 24, 4, 8);
+
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 14, 24, 2, 2);
+  ctx.fillRect(ox + 18, 24, 2, 2);
+  ctx.fillRect(ox + 15, 29, 4, 2);
+
+  ctx.fillStyle = toHex(PLAYER_COLOR);
+  ctx.fillRect(ox + 7, 4, 18, 5);
+  ctx.fillRect(ox + 5, 8, 22, 3);
+  ctx.fillRect(ox + 22, 10, 6, 2);
+
   ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
   ctx.fillRect(ox + 8, 11, 16, 10);
 
-  // 目
-  ctx.fillStyle = toHex(0x000000);
-  ctx.fillRect(ox + 16, 13, 2, 3);
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 7, 10, 18, 3);
+  ctx.fillRect(ox + 10, 12, 6, 5);
+  ctx.fillRect(ox + 17, 12, 6, 5);
 
-  // ひげ
-  ctx.fillStyle = toHex(0x000000);
-  ctx.fillRect(ox + 11, 19, 10, 2);
+  ctx.fillStyle = toHex(PLAYER_GOGGLE_LENS_COLOR);
+  ctx.fillRect(ox + 11, 13, 4, 3);
+  ctx.fillRect(ox + 18, 13, 4, 3);
 
-  // 体（オーバーオール）
-  ctx.fillStyle = toHex(PLAYER_OVERALL_COLOR);
-  ctx.fillRect(ox + 6, 21, 20, 10);
+  ctx.fillStyle = toHex(0x2b2118);
+  ctx.fillRect(ox + 16, 18, 5, 2);
 
-  // 体（シャツ袖左）
-  ctx.fillStyle = toHex(PLAYER_COLOR);
-  ctx.fillRect(ox + 4, 22, 6, 6);
-  // 体（シャツ袖右）
-  ctx.fillRect(ox + 22, 22, 6, 6);
-
-  // ボタン左
-  ctx.fillStyle = toHex(0xf0d000);
-  ctx.fillRect(ox + 11, 27, 2, 2);
-  // ボタン右
-  ctx.fillRect(ox + 19, 27, 2, 2);
-
-  // --- フレーム別差分（足・手）---
   if (frame === 'idle') {
-    // 左足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 10, 37, 6, 11);
-    // 右足
     ctx.fillRect(ox + 16, 37, 6, 11);
-    // 両手
-    ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-    ctx.fillRect(ox + 2, 27, 4, 4);
-    ctx.fillRect(ox + 26, 27, 4, 4);
-
+    drawChikuHands(ctx, ox, 27, 27);
   } else if (frame === 'walk1') {
-    // 左足前
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 8, 37, 6, 11);
-    // 右足
     ctx.fillRect(ox + 18, 39, 6, 9);
-    // 手
-    ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-    ctx.fillRect(ox + 2, 25, 4, 4);
-    ctx.fillRect(ox + 26, 29, 4, 4);
-
+    drawChikuHands(ctx, ox, 25, 29);
   } else if (frame === 'walk2') {
-    // 左足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 8, 39, 6, 9);
-    // 右足前
     ctx.fillRect(ox + 18, 37, 6, 11);
-    // 手
-    ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-    ctx.fillRect(ox + 2, 29, 4, 4);
-    ctx.fillRect(ox + 26, 25, 4, 4);
-
+    drawChikuHands(ctx, ox, 29, 25);
   } else if (frame === 'jump') {
-    // 両足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 9, 35, 6, 13);
     ctx.fillRect(ox + 17, 35, 6, 13);
-    // 両手上
-    ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-    ctx.fillRect(ox + 2, 19, 4, 4);
-    ctx.fillRect(ox + 26, 19, 4, 4);
+    drawChikuHands(ctx, ox, 19, 19);
   }
+}
+
+function drawChikuHands(ctx: CanvasRenderingContext2D, ox: number, leftY: number, rightY: number): void {
+  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
+  ctx.fillRect(ox + 3, leftY, 4, 4);
+  ctx.fillRect(ox + 25, rightY, 4, 4);
+  ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
+  ctx.fillRect(ox + 2, leftY + 3, 4, 3);
+  ctx.fillRect(ox + 26, rightY + 3, 4, 3);
+}
+
+function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
+  drawChikuFrame(ctx, ox, frame);
 }
 
 function drawPlayerSoleSeal(ctx: CanvasRenderingContext2D, frameX: number, frame: PlayerFrame): void {

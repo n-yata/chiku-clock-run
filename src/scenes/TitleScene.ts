@@ -79,7 +79,10 @@ export class TitleScene extends Phaser.Scene {
   private startGame(): void {
     if (this.isStarting) return;
     this.isStarting = true;
-    this.scene.start('GameScene', { stageIndex: 0, lives: INITIAL_LIVES });
+    this.titleText.destroy();
+    this.promptText.destroy();
+    this.scene.launch('GameScene', { stageIndex: 0, lives: INITIAL_LIVES });
+    this.scene.stop();
   }
 
   private onShutdown(): void {

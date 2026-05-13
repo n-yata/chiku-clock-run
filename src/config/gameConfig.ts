@@ -18,9 +18,13 @@ export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
 
 export const BG_COLOR = '#5c94fc';
 
-export const PLAYER_COLOR = 0xc0392b;
+export const PLAYER_COLOR = 0x2f5d50;
 export const PLAYER_SKIN_COLOR    = 0xffd6a8;
-export const PLAYER_OVERALL_COLOR = 0x2e3aa8;
+export const PLAYER_OVERALL_COLOR = 0x345f46;
+export const PLAYER_SHIRT_COLOR = 0xf4f1e8;
+export const PLAYER_VEST_COLOR = 0x345f46;
+export const PLAYER_BRASS_COLOR = 0xc9973a;
+export const PLAYER_GOGGLE_LENS_COLOR = 0x8ed4d8;
 export const PLAYER_SHOE_COLOR    = 0x6b4226;
 export const GROUND_COLOR = 0x8b4513;
 export const GOAL_COLOR = 0xffd700;
@@ -202,7 +206,7 @@ export const HUD_STAGE_Y = 16;
 export const HUD_STAGE_LABEL = 'STAGE';
 
 // --- v0.5: タイトル画面 ---
-export const GAME_TITLE = 'MARIO-LIKE GAME';
+export const GAME_TITLE = 'CHIKU CLOCK RUN';
 export const TITLE_FONT_FAMILY = 'system-ui, sans-serif';
 export const TITLE_FONT_SIZE = '72px';
 export const TITLE_FONT_COLOR = '#ffffff';
@@ -223,10 +227,10 @@ export const INVINCIBLE_BLINK_MS = 100;
 export const BIG_SCALE = 1.5;
 export const MUSHROOM_SPRITE_W = 32;
 export const MUSHROOM_SPRITE_H = 32;
-export const MUSHROOM_CAP_COLOR = 0xe53935;
-export const MUSHROOM_DOT_COLOR = 0xffffff;
-export const MUSHROOM_STEM_COLOR = 0xfff1c1;
-export const MUSHROOM_STEM_DARK_COLOR = 0xc9a96e;
+export const MUSHROOM_CAP_COLOR = 0xc9973a;
+export const MUSHROOM_DOT_COLOR = 0xf4f1e8;
+export const MUSHROOM_STEM_COLOR = 0x6f7f4c;
+export const MUSHROOM_STEM_DARK_COLOR = 0x4f5d38;
 export const STAGE_MUSHROOM_MIN = 0;
 export const STAGE_MUSHROOM_MAX = 5;
 export const HUD_LIFE_LABEL = 'ライフ';

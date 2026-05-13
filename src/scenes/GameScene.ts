@@ -708,12 +708,14 @@ export class GameScene extends Phaser.Scene {
     if (reason === 'enemy') {
       if (this.playerState === 'fire') {
         this.applyPlayerState('big');
+        this.snapPlayerToNearbyGround();
         this.startInvincible();
         this.audio.playSe('stomp');
         return;
       }
       if (this.playerState === 'big') {
         this.applyPlayerState('small');
+        this.snapPlayerToNearbyGround();
         this.startInvincible();
         this.audio.playSe('stomp');
         return;
@@ -890,11 +892,11 @@ export class GameScene extends Phaser.Scene {
     const w = isBig ? PLAYER_SPRITE_W * BIG_SCALE : PLAYER_SPRITE_W;
     const h = isBig ? PLAYER_SPRITE_H * BIG_SCALE : PLAYER_SPRITE_H;
     const body = this.player.body as Phaser.Physics.Arcade.Body | null;
-    const bottom = this.player.y + this.player.displayHeight * (1 - this.player.originY);
+    const bottom = body?.bottom ?? this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDisplaySize(w, h);
-    this.player.setY(bottom - this.player.displayHeight / 2);
     body?.setSize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     body?.updateFromGameObject();
+    this.setPlayerBodyBottom(bottom);
     if (!this.isStarInvincible) {
       if (newState === 'fire') {
         this.player.setTint(PLAYER_FIRE_TINT);
@@ -909,6 +911,47 @@ export class GameScene extends Phaser.Scene {
         this.instructionText.setText('PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ');
       }
     }
+  }
+
+  private setPlayerBodyBottom(bottom: number): void {
+    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
+    if (body) {
+      this.player.setY(this.player.y + bottom - body.bottom);
+      body.updateFromGameObject();
+      return;
+    }
+    this.player.setY(bottom - this.player.displayHeight * (1 - this.player.originY));
+  }
+
+  private snapPlayerToNearbyGround(): void {
+    const groundTop = this.findNearbyGroundTopUnderPlayer();
+    if (groundTop === null) return;
+    this.setPlayerBodyBottom(groundTop);
+    this.player.setVelocityY(0);
+  }
+
+  private findNearbyGroundTopUnderPlayer(): number | null {
+    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
+    if (!body) return null;
+
+    const probeXs = [body.left + 1, body.center.x, body.right - 1];
+    let nearest: { top: number; distance: number } | null = null;
+
+    for (const x of probeXs) {
+      const col = Math.floor(x / TILE_SIZE);
+      if (col < 0) continue;
+      for (let row = 0; row < this.groundMask.length; row++) {
+        if (!this.groundMask[row]?.[col]) continue;
+        const top = row * TILE_SIZE;
+        const distance = body.bottom - top;
+        if (distance < -2 || distance > TILE_SIZE + 4) continue;
+        if (!nearest || distance < nearest.distance) {
+          nearest = { top, distance };
+        }
+      }
+    }
+
+    return nearest?.top ?? null;
   }
 
   private onFireflowerOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_p, flower) => {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
 
 type Rgb = {
@@ -90,7 +90,51 @@ function isPlayerShoePixel(color: Rgb): boolean {
   return colorDistance(color, PLAYER_SHOE) < 12;
 }
 
+async function installGameCapture(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    let storedPhaser: unknown;
+    Object.defineProperty(window, 'Phaser', {
+      configurable: true,
+      get() {
+        return storedPhaser;
+      },
+      set(value: any) {
+        if (value?.Game && !value.Game.__captured) {
+          const OriginalGame = value.Game;
+          const WrappedGame = function (...args: any[]) {
+            const game = new OriginalGame(...args);
+            (window as any).__capturedGame = game;
+            return game;
+          };
+          WrappedGame.prototype = OriginalGame.prototype;
+          Object.setPrototypeOf(WrappedGame, OriginalGame);
+          WrappedGame.__captured = true;
+          value.Game = WrappedGame;
+        }
+        storedPhaser = value;
+      }
+    });
+  });
+}
+
+async function startGameAndWaitForPlayer(page: Page, canvas: Locator): Promise<void> {
+  await expect(canvas).toHaveCount(1);
+  await page.waitForFunction(() => Boolean((window as any).__capturedGame?.scene));
+  await page.evaluate(() => {
+    const sceneManager = (window as any).__capturedGame.scene;
+    sceneManager.stop('TitleScene');
+    sceneManager.start('GameScene', { stageIndex: 0 });
+  });
+  await page.waitForFunction(() => {
+    const game = (window as any).__capturedGame;
+    const scene = game?.scene.getScene('GameScene') as any;
+    return Boolean(scene?.player?.body);
+  });
+  await page.waitForTimeout(500);
+}
+
 test('renders sprite assets in the game canvas', async ({ page }) => {
+  await installGameCapture(page);
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   page.on('console', (message) => {
@@ -101,9 +145,7 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
   await page.goto('/');
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveCount(1);
-  await canvas.click({ position: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 } });
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(2_000);
+  await startGameAndWaitForPlayer(page, canvas);
 
   const screenshot = await canvas.screenshot();
   const png = PNG.sync.read(screenshot);
@@ -148,36 +190,12 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
 });
 
 test('keeps upgraded player feet visually grounded', async ({ page }) => {
-  await page.addInitScript(() => {
-    let storedPhaser: unknown;
-    Object.defineProperty(window, 'Phaser', {
-      configurable: true,
-      get() {
-        return storedPhaser;
-      },
-      set(value: any) {
-        if (value?.Game && !value.Game.__captured) {
-          const OriginalGame = value.Game;
-          const WrappedGame = function (...args: any[]) {
-            const game = new OriginalGame(...args);
-            (window as any).__capturedGame = game;
-            return game;
-          };
-          WrappedGame.prototype = OriginalGame.prototype;
-          Object.setPrototypeOf(WrappedGame, OriginalGame);
-          WrappedGame.__captured = true;
-          value.Game = WrappedGame;
-        }
-        storedPhaser = value;
-      }
-    });
-  });
+  await installGameCapture(page);
 
   await page.goto('/');
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveCount(1);
-  await canvas.click({ position: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 } });
-  await page.waitForTimeout(700);
+  await startGameAndWaitForPlayer(page, canvas);
 
   const runtimeState = await page.evaluate(() => {
     const game = (window as any).__capturedGame;
@@ -213,4 +231,76 @@ test('keeps upgraded player feet visually grounded', async ({ page }) => {
   expect(lowestShoeY).not.toBeNull();
   expect(groundTopY).not.toBeNull();
   expect(groundTopY! - lowestShoeY! - 1).toBeLessThanOrEqual(1);
+
+  const downgradedState = await page.evaluate(() => {
+    const game = (window as any).__capturedGame;
+    const scene = game?.scene.getScene('GameScene') as any;
+    if (!scene) throw new Error('GameScene is not available');
+    const beforeBottom = scene.player.body.bottom;
+    scene.applyPlayerState('small');
+    scene.player.setVelocity(0, 0);
+    const body = scene.player.body;
+    return {
+      beforeBottom,
+      displayHeight: scene.player.displayHeight,
+      bodyHeight: body.height,
+      bodyBottom: body.bottom,
+      visualBottom: scene.player.y + scene.player.displayHeight * (1 - scene.player.originY)
+    };
+  });
+
+  expect(downgradedState.displayHeight).toBe(56);
+  expect(downgradedState.bodyHeight).toBe(56);
+  expect(Math.abs(downgradedState.bodyBottom - downgradedState.beforeBottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs(downgradedState.bodyBottom - downgradedState.visualBottom)).toBeLessThanOrEqual(1);
+
+  await page.waitForTimeout(300);
+  const downgradedScreenshot = await canvas.screenshot();
+  const downgradedPng = PNG.sync.read(downgradedScreenshot);
+  const downgradedPlayerBounds = { x1: 45, y1: 430, x2: 120, y2: 520 };
+  const downgradedLowestShoeY = findLowestPixelY(downgradedPng, downgradedPlayerBounds, isPlayerShoePixel);
+  const downgradedGroundTopY = findFirstRowY(
+    downgradedPng,
+    { x1: downgradedPlayerBounds.x1, y1: 500, x2: downgradedPlayerBounds.x2, y2: 520 },
+    12,
+    isGroundSurfacePixel
+  );
+
+  expect(downgradedLowestShoeY).not.toBeNull();
+  expect(downgradedGroundTopY).not.toBeNull();
+  expect(downgradedGroundTopY! - downgradedLowestShoeY! - 1).toBeLessThanOrEqual(1);
+
+  const damagedState = await page.evaluate(() => {
+    const game = (window as any).__capturedGame;
+    const scene = game?.scene.getScene('GameScene') as any;
+    if (!scene) throw new Error('GameScene is not available');
+
+    scene.applyPlayerState('big');
+    scene.player.setVelocity(0, 0);
+    const expectedGroundBottom = scene.player.body.bottom;
+    scene.player.setY(scene.player.y + 32);
+    scene.player.body.updateFromGameObject();
+    const embeddedBottom = scene.player.body.bottom;
+
+    scene.handleMiss('enemy');
+    const body = scene.player.body;
+    return {
+      expectedGroundBottom,
+      embeddedBottom,
+      playerState: scene.playerState,
+      displayHeight: scene.player.displayHeight,
+      bodyHeight: body.height,
+      bodyBottom: body.bottom,
+      velocityY: body.velocity.y,
+      visualBottom: scene.player.y + scene.player.displayHeight * (1 - scene.player.originY)
+    };
+  });
+
+  expect(damagedState.embeddedBottom - damagedState.expectedGroundBottom).toBeGreaterThanOrEqual(31);
+  expect(damagedState.playerState).toBe('small');
+  expect(damagedState.displayHeight).toBe(56);
+  expect(damagedState.bodyHeight).toBe(56);
+  expect(Math.abs(damagedState.bodyBottom - damagedState.expectedGroundBottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs(damagedState.bodyBottom - damagedState.visualBottom)).toBeLessThanOrEqual(1);
+  expect(damagedState.velocityY).toBe(0);
 });
