@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-04 |
+| 最終更新 | 2026-05-13 |
 | 担当 | モドリッチ |
 | ステータス | 承認済み |
 
@@ -90,7 +90,7 @@ Conventional Commits 形式を採用:
 
 ### 現状
 
-v0.2 時点でユニットテスト / E2E テストは未導入。動作確認は GitHub Pages デプロイ後にシャビが手動で実施する。
+E2E テストとして Playwright を導入済み。`npm run test:e2e` は Vite dev server を自動起動し、Chromium でゲーム画面の canvas 描画を検証する。初回環境では `npx playwright install chromium` を実行する。
 
 ### テストを追加する場合の規約
 
@@ -104,11 +104,11 @@ v0.2 時点でユニットテスト / E2E テストは未導入。動作確認�
 | レイヤ | ツール候補 | 対象 |
 |-------|---------|------|
 | ユニット | Vitest | `buildStage()` バリデーション / `StageDefinition` 型 / `gameConfig` 定数の整合性 |
-| E2E | Playwright | プレイヤー移動 / ゴール判定 / ミスリスタートの基本フロー |
+| E2E | Playwright | canvas 描画（地面・コイン）/ プレイヤー移動 / ゴール判定 / ミスリスタートの基本フロー |
 
 ### ビルド品質チェック（現行の代替手段）
 
-`npm run typecheck && npm run build` が通ることをコミット前に確認する。TypeScript のコンパイルエラーと型エラーはゲームロジックの多くのバグを事前に検出できる。
+`npm run typecheck && npm run build` が通ることをコミット前に確認する。画面描画に関わる変更では `npm run test:e2e` も実行する。TypeScript のコンパイルエラーと型エラーはゲームロジックの多くのバグを事前に検出できる。
 
 ---
 
@@ -193,6 +193,24 @@ goalY  = (goalRow  + 1) * TILE_SIZE - GOAL_SPRITE_H  / 2
 
 **対処:** `buildStage()` 内で地面 Sprite と goal Sprite の生成直後に `.refreshBody()` を明示的に呼ぶ。
 
+#### Phaser Loader の画像読み込みには CSP `img-src blob:` が必要
+
+**背景:** `this.load.image()` は内部で画像を blob URL として処理する場合がある。`img-src 'self' data:` のみではブラウザが `blob:` をブロックし、`BootScene` の必須テクスチャ検証で ground / coin / goal が欠落する。
+
+**対処:** `index.html` の CSP は `img-src 'self' data: blob:` を維持する。外部画像の許可ではなく、同一オリジンで取得した画像を Phaser Loader が内部処理するための許可として扱う。
+
+#### プレイヤースプライトの足裏はフレーム下端まで描画する
+
+**背景:** Arcade Physics の body 下端を床に合わせても、スプライト画像内の足裏ピクセルがフレーム下端まで届いていないと、透明余白が拡大表示されて床から浮いて見える。
+
+**対処:** `spriteSheets.ts` のプレイヤー各フレームでは靴の矩形を描画キャンバス下端まで届かせ、スプライトシート生成時は `imageSmoothingEnabled = false` を維持する。接地表現を変更した場合は `tests/e2e/game-visual.spec.ts` の足裏ピクセル検証を更新する。
+
+#### 表示サイズ変更後の body は未スケール寸法で設定する
+
+**背景:** `setDisplaySize()` は Game Object の scale を変更する。直後に `body.setSize(displayWidth, displayHeight)` を呼ぶと Arcade Physics 側で scale が再適用され、big 状態の body が表示より大きくなり、接地位置がずれる。
+
+**対処:** プレイヤーの body サイズは `PLAYER_SPRITE_W` / `PLAYER_SPRITE_H` のような未スケール寸法で設定する。表示倍率は `setDisplaySize()` に集約し、body 下端と visual 下端の一致を E2E で検証する。
+
 #### カメラ境界と物理ワールド境界は両方設定する
 
 `cameras.main.setBounds(...)` と `physics.world.setBounds(...)` の両方をステージ寸法（`cols * TILE_SIZE` × `rows * TILE_SIZE`）に合わせて設定する。片方だけだとカメラがステージ外に出る / `setCollideWorldBounds` が機能しない。
@@ -235,7 +253,7 @@ GitHub Pages は `https://<owner>.github.io/<repo>/` のサブパスで配信さ
 
 #### デプロイ確認はシャビが GitHub Pages で実施
 
-`npm run dev`（Vite 開発サーバー）は自分から起動しない。動作確認は GitHub Pages にデプロイ後、シャビが実機（スマートフォン含む）で行う。
+手動の実機確認は GitHub Pages にデプロイ後、シャビがスマートフォン含めて行う。自動確認は `npm run test:e2e` を使い、Vite dev server は Playwright の `webServer` から起動する。
 
 ### セキュリティ
 
@@ -245,7 +263,7 @@ GitHub Pages は `https://<owner>.github.io/<repo>/` のサブパスで配信さ
 
 ```
 default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
-img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
 ```
 
 外部スクリプト / 外部スタイル / 外部画像を追加する場合は、CSP の変更をクルトワ（security-engineer）にレビューしてから実装する。

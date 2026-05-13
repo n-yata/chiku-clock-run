@@ -100,8 +100,15 @@ BGM / SE・複数ステージ・タイトル画面は v0.3 以降で追加予定
 |---------|------|
 | `npm run build` | 型チェック + 本番ビルド（`dist/`） |
 | `npm run typecheck` | TypeScript 型チェックのみ |
+| `npm run test:e2e` | Playwright + Chromium でゲーム画面の canvas 描画を検証 |
 | `npm run preview` | ビルド成果物をローカルで確認（必要に応じて） |
 | `npm run dev` | Vite 開発サーバ起動（このプロジェクトでは基本使用せず、Pages デプロイ後に動作確認する運用） |
+
+初回のみ Playwright のブラウザを入れる:
+
+```bash
+npx playwright install chromium
+```
 
 ---
 

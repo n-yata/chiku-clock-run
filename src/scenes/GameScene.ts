@@ -889,8 +889,12 @@ export class GameScene extends Phaser.Scene {
     const isBig = newState === 'big' || newState === 'fire';
     const w = isBig ? PLAYER_SPRITE_W * BIG_SCALE : PLAYER_SPRITE_W;
     const h = isBig ? PLAYER_SPRITE_H * BIG_SCALE : PLAYER_SPRITE_H;
+    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
+    const bottom = this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDisplaySize(w, h);
-    (this.player.body as Phaser.Physics.Arcade.Body).setSize(w, h);
+    this.player.setY(bottom - this.player.displayHeight / 2);
+    body?.setSize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
+    body?.updateFromGameObject();
     if (!this.isStarInvincible) {
       if (newState === 'fire') {
         this.player.setTint(PLAYER_FIRE_TINT);

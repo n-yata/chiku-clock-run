@@ -25,6 +25,9 @@ mario-game/
 │       └── stage03.ts            # STAGE_03 定数
 ├── scripts/                      # ビルド補助スクリプト（Node.js、標準ライブラリのみ）
 │   └── generate-icons.mjs        # PWA アイコン生成（192/512/maskable-512 の RGBA PNG 3 種）
+├── tests/
+│   └── e2e/
+│       └── game-visual.spec.ts   # Playwright による canvas 描画検証
 ├── public/                       # Vite 静的ファイル（dist/ にそのままコピー）
 │   ├── icons/                    # PWA アイコン（generate-icons.mjs で生成）
 │   │   ├── icon-192.png          # 192×192 RGBA PNG（通常アイコン）
@@ -35,8 +38,9 @@ mario-game/
 │           └── KENNEY_LICENSE.txt  # CC0 ライセンス原文
 ├── index.html                    # Vite エントリ HTML（CSP `<meta>` 含む）
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
+├── playwright.config.ts          # Playwright E2E 設定（Vite dev server 自動起動）
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 設定
-├── package.json                  # 依存（phaser のみ） + scripts
+├── package.json                  # 依存（phaser）・dev 依存（Vite / Playwright 等） + scripts
 ├── docs/                         # 永続的ドキュメント（6 本）
 │   ├── product-requirements.md   # プロダクト要件定義書
 │   ├── functional-design.md      # 機能設計書
@@ -72,10 +76,12 @@ mario-game/
 | `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
 | `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・敵 / コイン物理・ミス演出・HUD スタイル・SE/BGM パラメータ・寸法・閾値・テクスチャキーの単一集約点 |
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
-| `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定 |
+| `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定。Phaser Loader 用に `img-src` は `blob:` を許可 |
 | `scripts/generate-icons.mjs` | PWA アイコン生成スクリプト。Node.js 標準ライブラリ（`node:zlib` / `node:fs` / `node:path`）のみ使用。`npm run generate-icons` で実行。赤背景（#E52521）+ 白「M」のアイコンを 3 種生成 |
 | `public/icons/` | PWA アイコン 3 種。`manifest.webmanifest` から参照される。`generate-icons.mjs` で再生成可能 |
-| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで manifest / SW を自動生成 |
+| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで manifest / SW を自動生成。PNG の data URI 化を避けるため `assetsInlineLimit: 0` を設定 |
+| `playwright.config.ts` | `npm run test:e2e` 用設定。Chromium と Vite dev server を使って canvas 描画を検証 |
+| `tests/e2e/` | Playwright E2E テスト。`game-visual.spec.ts` は地面・コインの canvas ピクセルを検証 |
 | `docs/` | 永続的ドキュメント 6 本（`product-requirements.md` / `functional-design.md` / `architecture.md` / `repository-structure.md` / `development-guidelines.md` / `glossary.md`） |
 | `docs/template/` | 永続的ドキュメントのひな形 |
 | `.steering/[YYYYMMDD]-[開発タイトル]/` | スプリント単位の要求・設計・タスクリスト・決定事項ログ |
@@ -93,6 +99,7 @@ mario-game/
 - 物理定数・閾値・テクスチャキー・HUD スタイル文字列は `src/config/gameConfig.ts` に集約。シーンファイルにマジックナンバー / 色 / HUD 文言の直書き禁止
 - ステージデータは `src/stages/` に 1 ファイル 1 ステージで配置（`stage01.ts` / `stage02.ts` / `stage03.ts`）
 - PWA アイコンは `public/icons/` に配置。`scripts/generate-icons.mjs` で再生成可能（`npm run generate-icons`）
+- E2E テストは `tests/e2e/` に配置。スクリーンショットの恒久成果物はコミットしない
 - 機密情報を含むファイル（`.env`, シークレット鍵 等）は `.gitignore` 対象（本案件では発生しない想定）
 
 ---

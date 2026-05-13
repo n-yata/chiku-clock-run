@@ -37,18 +37,21 @@ export function buildPlayerSheet(scene: Phaser.Scene): void {
   canvas.height = frameH;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = false;
 
   const tmp = document.createElement('canvas');
   tmp.width  = PLAYER_DRAW_W;
   tmp.height = PLAYER_DRAW_H;
   const tmpCtx = tmp.getContext('2d');
   if (!tmpCtx) throw new Error('canvas 2d context unavailable');
+  tmpCtx.imageSmoothingEnabled = false;
 
   const frames: PlayerFrame[] = ['idle', 'walk1', 'walk2', 'jump'];
   frames.forEach((frame, i) => {
     tmpCtx.clearRect(0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H);
     drawPlayerFrame(tmpCtx, 0, frame);
     ctx.drawImage(tmp, 0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H, i * frameW, 0, frameW, frameH);
+    drawPlayerSoleSeal(ctx, i * frameW, frame);
   });
 
   const tex = scene.textures.addCanvas(TEX_KEY.playerSheet, canvas);
@@ -237,9 +240,9 @@ function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: Playe
   if (frame === 'idle') {
     // 左足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 10, 37, 6, 9);
+    ctx.fillRect(ox + 10, 37, 6, 11);
     // 右足
-    ctx.fillRect(ox + 16, 37, 6, 9);
+    ctx.fillRect(ox + 16, 37, 6, 11);
     // 両手
     ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
     ctx.fillRect(ox + 2, 27, 4, 4);
@@ -248,9 +251,9 @@ function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: Playe
   } else if (frame === 'walk1') {
     // 左足前
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 8, 37, 6, 9);
+    ctx.fillRect(ox + 8, 37, 6, 11);
     // 右足
-    ctx.fillRect(ox + 18, 39, 6, 7);
+    ctx.fillRect(ox + 18, 39, 6, 9);
     // 手
     ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
     ctx.fillRect(ox + 2, 25, 4, 4);
@@ -259,9 +262,9 @@ function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: Playe
   } else if (frame === 'walk2') {
     // 左足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 8, 39, 6, 7);
+    ctx.fillRect(ox + 8, 39, 6, 9);
     // 右足前
-    ctx.fillRect(ox + 18, 37, 6, 9);
+    ctx.fillRect(ox + 18, 37, 6, 11);
     // 手
     ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
     ctx.fillRect(ox + 2, 29, 4, 4);
@@ -270,12 +273,34 @@ function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: Playe
   } else if (frame === 'jump') {
     // 両足
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 9, 35, 6, 7);
-    ctx.fillRect(ox + 17, 35, 6, 7);
+    ctx.fillRect(ox + 9, 35, 6, 13);
+    ctx.fillRect(ox + 17, 35, 6, 13);
     // 両手上
     ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
     ctx.fillRect(ox + 2, 19, 4, 4);
     ctx.fillRect(ox + 26, 19, 4, 4);
+  }
+}
+
+function drawPlayerSoleSeal(ctx: CanvasRenderingContext2D, frameX: number, frame: PlayerFrame): void {
+  const scaleX = PLAYER_SPRITE_W / PLAYER_DRAW_W;
+  const scaleY = PLAYER_SPRITE_H / PLAYER_DRAW_H;
+  const soleY = PLAYER_SPRITE_H - Math.ceil(3 * scaleY);
+  const soleH = PLAYER_SPRITE_H - soleY;
+  const sourceRects = frame === 'jump'
+    ? [{ x: 9, w: 14 }]
+    : frame === 'idle'
+      ? [{ x: 10, w: 12 }]
+      : [{ x: 8, w: 16 }];
+
+  ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
+  for (const rect of sourceRects) {
+    ctx.fillRect(
+      frameX + Math.floor(rect.x * scaleX),
+      soleY,
+      Math.ceil(rect.w * scaleX),
+      soleH
+    );
   }
 }
 

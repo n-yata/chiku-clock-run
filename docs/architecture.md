@@ -32,6 +32,8 @@
   - 実行時依存ゼロ（ビルド時生成のみ、バンドルサイズへの影響 < 7 kB gzip）
 - 音声レイヤ: Web Audio API（ブラウザ標準、追加依存なし）
   - `AudioManager`（`src/audio/AudioManager.ts`）— SE 5 種 + BGM ループを `OscillatorNode` / `GainNode` の短命グラフで合成。外部音声ファイル不使用
+- E2E: Playwright（Chromium） + `pngjs`
+  - `npm run test:e2e` で Vite dev server を自動起動し、canvas screenshot のピクセル検証を実施
 
 ### バックエンド
 
@@ -92,6 +94,7 @@
 | Vite (`npm run dev`) | HMR 付き開発サーバ（ポート 5173） |
 | Vite (`npm run build`) | 型チェック + 本番ビルド（`dist/`） |
 | TypeScript (`npm run typecheck`) | 型エラー検出（`tsc --noEmit`） |
+| Playwright (`npm run test:e2e`) | Chromium でゲーム画面を開き、地面・コインの canvas 描画をピクセル検証 |
 | Phaser 3 | ゲームエンジン（Scene / Arcade Physics / Camera） |
 | GitHub Actions | `main` push 時の build + Pages デプロイ |
 | クルトワ（security-engineer エージェント） | コミット前のセキュリティレビュー（必須） |
@@ -104,7 +107,7 @@
 - 通信暗号化: GitHub Pages の HTTPS 配信に依存
 - 認証・認可: なし（公開ゲーム）
 - 入力バリデーション: キーボード・タッチ入力。Phaser の `add.text()` に渡す文字列は全てリテラル定数で動的展開なし。タッチ座標は内部ロジックのみで使用し外部送信しない
-- CSP: `index.html` の `<meta http-equiv="Content-Security-Policy">` で `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'` を設定
+- CSP: `index.html` の `<meta http-equiv="Content-Security-Policy">` で `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'` を設定。Phaser Loader が内部生成する画像 blob URL を許可する
 - ハードコーディング禁止: 物理定数・ステージ定義は `src/config/gameConfig.ts` / `src/stages/stage01.ts` に集約。GitHub Pages base パスのみ `vite.config.ts` 経由で `VITE_BASE_PATH` 環境変数から取得
 
 ---
@@ -116,8 +119,9 @@
 - v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）+ 16 ステップアルペジオ BGM。iOS Safari unlock 対応。バンドルサイズ +4 kB のみ
 - v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
-- v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を Vite import 経由で data URI としてバンドルに埋め込む。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更
+- v0.6（実装済み）: 外部スプライト PNG 導入 — Kenney "Pixel Platformer"（CC0）の PNG 5 種を Vite import 経由で読み込む。`BootScene` の `generateTexture()` を `load.image()` に全面切り替え。`TEX_KEY` 抽象化により `GameScene.ts` のロジックは無変更
 - v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。Web App Manifest（`manifest.webmanifest`）と Service Worker（`sw.js`）を自動生成。全アセットを Precache しオフラインでもゲーム起動・全ステージプレイが可能。`injectRegister: 'script'` で独立 `registerSW.js` を使用し CSP `script-src 'self'` を維持。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬（ハードコードなし）。アイコン 3 種（192×192 / 512×512 / maskable 512×512）を `scripts/generate-icons.mjs`（Node.js 標準ライブラリのみ）で生成
 - v0.8（実装済み）: スプライトアニメーション化 — `document.createElement('canvas')` + `textures.addCanvas` + `Texture.add(name, ...)` によるプログラマティックスプライトシート生成。プレイヤー 4 フレーム（idle/walk1/walk2/jump）・敵 2 フレーム（walk1/walk2）をアニメーション再生。`generateFrameNames` + 名前付きフレームで管理。描画は 32×48 固定座標空間で行い `drawImage` でフレームサイズへスケーリング（サイズ変更に `gameConfig.ts` 定数変更のみで追従）。踏みつけ判定を `pBody.centerY <= eBody.centerY` 方式に変更し高度差バグを解消
+- v1.1（実装済み）: Playwright E2E 導入 — `npm run test:e2e` で Chromium を起動し、地面・コインが canvas に描画されることをピクセル検証。`vite.config.ts` の `assetsInlineLimit: 0` で PNG を `dist/assets/*.png` として出力
 - 今後の拡張: ライフ / パワーアップ、音量調整 UI、背景画像追加
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）

@@ -97,7 +97,7 @@ GitHub Pages への静的デプロイにより、サーバー維持コストゼ�
 - 通信暗号化: GitHub Pages の HTTPS 配信に依存（追加設定不要）
 - 認証・認可: なし（公開ゲーム）
 - 入力バリデーション: ユーザー入力はキーボードイベント・タッチ座標のみ。Phaser テキストに渡す文字列はリテラル定数か数値型に固定
-- CSP: `index.html` の `<meta http-equiv="Content-Security-Policy">` で `default-src 'self'` 系を設定し、外部リソース読み込みを禁止
+- CSP: `index.html` の `<meta http-equiv="Content-Security-Policy">` で `default-src 'self'` 系を設定し、外部リソース読み込みを禁止。Phaser Loader の画像処理に必要な `img-src blob:` は許可する
 
 ### 可用性
 
