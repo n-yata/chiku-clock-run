@@ -22,7 +22,8 @@ chiku-clock-run/
 │       ├── index.ts              # STAGES 配列・getStage / nextStageIndex ユーティリティ
 │       ├── stage01.ts            # STAGE_01 定数（StageDefinition 型）
 │       ├── stage02.ts            # STAGE_02 定数
-│       └── stage03.ts            # STAGE_03 定数
+│       ├── stage03.ts            # STAGE_03 定数
+│       └── stageValidation.ts    # 必須ルート通行性・難易度進行の純粋検証
 ├── scripts/                      # ビルド補助スクリプト（Node.js、標準ライブラリのみ）
 │   └── generate-icons.mjs        # 時計 PWA アイコン + 歯車片 / ビーコン PNG 生成
 ├── tests/
@@ -73,6 +74,7 @@ chiku-clock-run/
 | `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
 | `src/config/gameConfig.ts` | 物理・障害機 / 歯車片 / 能力アイテム・HUD・SE/BGM・寸法・テクスチャキーの単一集約点 |
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義。`'E'` は巻きネジ障害機、`'C'` は歯車片、`'M'` / `'F'` / `'S'` は能力アイテム |
+| `src/stages/stageValidation.ts` | `criticalPath` の床上クリアランスと、ステージ順の難易度 metrics をテスト用に検証 |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定。Phaser Loader 用に `img-src` は `blob:` を許可 |
 | `scripts/generate-icons.mjs` | Node.js 標準ライブラリのみで時計文字盤 / 歯車モチーフの PWA アイコンと小型ゲーム PNG を決定的に生成 |
 | `public/icons/` | PWA アイコン 3 種。`manifest.webmanifest` から参照される。`generate-icons.mjs` で再生成可能 |

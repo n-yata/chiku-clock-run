@@ -1,5 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
+import { STAGES } from '../../src/stages/index';
+import {
+  measureStageDifficulty,
+  validateCriticalPathClearance,
+  validateDifficultyProgression
+} from '../../src/stages/stageValidation';
+
+test.describe.configure({ mode: 'serial' });
 
 type Rgb = {
   readonly r: number;
@@ -137,6 +145,61 @@ async function startGameAndWaitForPlayer(page: Page, canvas: Locator): Promise<v
   await page.waitForTimeout(500);
 }
 
+test('keeps maximum-size routes clear and raises difficulty stage by stage', () => {
+  for (const stage of STAGES) {
+    expect(validateCriticalPathClearance(stage), stage.id).toEqual([]);
+  }
+
+  const metrics = STAGES.map((stage) => measureStageDifficulty(stage));
+  expect(metrics.map((metric) => metric.difficultyScore)).toEqual(
+    [...metrics.map((metric) => metric.difficultyScore)].sort((a, b) => a - b)
+  );
+  expect(metrics[0].difficultyScore).toBeLessThan(metrics[1].difficultyScore);
+  expect(metrics[1].difficultyScore).toBeLessThan(metrics[2].difficultyScore);
+  expect(validateDifficultyProgression(STAGES)).toEqual([]);
+});
+
+test('fits a fire-size player on every declared critical path landing', async ({ page }) => {
+  await installGameCapture(page);
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  await startGameAndWaitForPlayer(page, canvas);
+
+  for (let stageIndex = 0; stageIndex < STAGES.length; stageIndex++) {
+    const stage = STAGES[stageIndex];
+    await page.evaluate((index) => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      scene.scene.restart({ stageIndex: index, lives: scene.lives, playerState: 'fire' });
+    }, stageIndex);
+    await page.waitForFunction((index) => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      return scene?.stageIndex === index && scene?.playerState === 'fire' && Boolean(scene.player?.body);
+    }, stageIndex);
+
+    for (const segment of stage.criticalPath) {
+      const landing = await page.evaluate(({ fromCol, toCol, supportRow }) => {
+        const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+        const x = ((fromCol + toCol) / 2 + 0.5) * 32;
+        const floorTop = supportRow * 32;
+        scene.player.body.reset(x, floorTop - scene.player.displayHeight / 2);
+        scene.player.setVelocity(0, 0);
+        return {
+          top: scene.player.body.top,
+          floorTop,
+          height: scene.player.body.height,
+          displayHeight: scene.player.displayHeight
+        };
+      }, segment);
+
+      expect(landing.displayHeight, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBe(84);
+      expect(landing.height, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBe(84);
+      expect(landing.top, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBeGreaterThanOrEqual(
+        (segment.supportRow - 3) * 32
+      );
+    }
+  }
+});
+
 test('renders sprite assets in the game canvas', async ({ page }) => {
   await installGameCapture(page);
   const consoleErrors: string[] = [];
@@ -235,11 +298,12 @@ test('collects clockwork abilities, fires a pulse bolt, and reaches the beacon t
     scene.player.setVelocity(0, 0);
   });
   await canvas.click();
-  await page.keyboard.press('KeyZ');
+  await page.keyboard.down('KeyZ');
   await page.waitForFunction(() => {
     const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
     return scene?.children.list.some((child: any) => child.active && child.texture?.key === 'pulse_bolt');
   });
+  await page.keyboard.up('KeyZ');
 
   await overlapFirstPickup('chronoCrystals');
   await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.isChronoShielded === true);
@@ -256,6 +320,82 @@ test('collects clockwork abilities, fires a pulse bolt, and reaches the beacon t
     const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
     return scene?.stageIndex === 2 && Boolean(scene.player?.body);
   });
+});
+
+test('preserves fire movement through each stage transition and reaches all clear', async ({ page }) => {
+  await installGameCapture(page);
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  await startGameAndWaitForPlayer(page, canvas);
+
+  await page.evaluate(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    const pulseCore = scene.pulseCores.getChildren().find((child: any) => child.active);
+    if (!pulseCore) throw new Error('Stage 01 pulse core is not available');
+    scene.player.body.reset(pulseCore.x, pulseCore.y);
+    scene.player.setVelocity(0, 0);
+  });
+  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'fire');
+
+  async function enterNextStage(expectedIndex: number): Promise<void> {
+    await page.evaluate(() => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
+      if (!beacon) throw new Error('beacon sprite is not available');
+      scene.player.body.reset(beacon.x, beacon.y);
+      scene.player.setVelocity(0, 0);
+    });
+    await page.waitForFunction((index) => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      return scene?.stageIndex === index && scene?.playerState === 'fire' && Boolean(scene.player?.body);
+    }, expectedIndex);
+
+    const beforeMove = await page.evaluate(() => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      const body = scene.player.body;
+      const overlapsGround = scene.groundMask.some((row: boolean[], rowIndex: number) =>
+        row.some((blocked: boolean, colIndex: number) => {
+          if (!blocked) return false;
+          const left = colIndex * 32;
+          const top = rowIndex * 32;
+          return (
+            body.left < left + 32 &&
+            body.right > left &&
+            body.top < top + 32 &&
+            body.bottom > top
+          );
+        })
+      );
+      return {
+        x: scene.player.x,
+        overlapsGround
+      };
+    });
+    expect(beforeMove.overlapsGround, `stage ${expectedIndex + 1} spawn overlaps ground`).toBe(false);
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(250);
+    await page.keyboard.up('ArrowRight');
+    const afterX = await page.evaluate(
+      () => (window as any).__capturedGame?.scene.getScene('GameScene')?.player.x as number
+    );
+    expect(afterX, `stage ${expectedIndex + 1} spawn should allow movement`).toBeGreaterThan(beforeMove.x);
+  }
+
+  await enterNextStage(1);
+  await enterNextStage(2);
+
+  await page.evaluate(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
+    if (!beacon) throw new Error('final beacon sprite is not available');
+    scene.player.body.reset(beacon.x, beacon.y);
+    scene.player.setVelocity(0, 0);
+  });
+  await page.waitForFunction(
+    () => (window as any).__capturedGame?.scene.isActive('TitleScene'),
+    undefined,
+    { timeout: 10_000 }
+  );
 });
 
 test('migrates a valid legacy stage index without retaining the old key', async ({ page }) => {

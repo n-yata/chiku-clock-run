@@ -104,6 +104,7 @@ sequenceDiagram
 | GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 障害機 AI / 歯車片取得 / 収集 HUD / 能力アイテム / ビーコン判定 / 全クリア後 `TitleScene` 遷移 |
 | ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
 | ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
+| ステージ契約検証 | `src/stages/stageValidation.ts` | 必須ルートの最大プレイヤー用クリアランス検証と、敵数・ギャップ数・高所区間数に基づく難易度進行の計測 |
 
 ### バックエンド層
 
@@ -151,8 +152,14 @@ interface StageDefinition {
   readonly cols: number;     // 横タイル数
   readonly rows: number;     // 縦タイル数
   readonly tiles: readonly string[];  // 行ごとの文字列（長さ cols に固定）
+  readonly criticalPath: readonly CriticalPathSegment[]; // 必須走路の支持床区間
+  readonly difficulty: StageDifficultyTarget; // ステージ役割と最低難度
 }
 ```
+
+`criticalPath` の各区間は `supportRow` の床上を歩く必須ルートを表す。`big` / `fire` の高さは 84px のため、支持床の直上 3 タイルに `#` がないことを `validateCriticalPathClearance()` で検証する。同時に `P` タイル左右 1 セルに `#` がないことを確認し、能力状態を保持したステージ遷移でも最大横幅の body が安全に出現できるようにする。
+
+難易度は `measureStageDifficulty()` が `enemyCount + groundGapCount * 2 + elevatedSegmentCount * 2` を算出する。`elevatedSegmentCount` は宣言区間数ではなく、主床より上のタイル表面から導出する。`validateDifficultyProgression()` は役割 `intro` / `intermediate` / `final` と score の Stage 01 から Stage 03 への厳密増加を確認する。
 
 タイル文字の意味:
 
@@ -279,6 +286,8 @@ Overlap の登録順:
 |------|------|------|
 | リスタート方式 | 通常は `scene.restart()` で同一ステージまたは次ステージへ遷移する。床貫通問題が再発した場合のみ `USE_HARD_RELOAD_FALLBACK = true` で `window.location.reload()` 経路へ切り替える | フォールバック定数で切替可能 |
 | `StageDefinition.tiles` 文字列配列 | ステージ追加時は `src/stages/` にファイルを追加するだけ。既存 `GameScene.buildStage()` は `StageDefinition` 型を受け取るため変更不要 | 型で保証 |
+| 拡大状態の通路閉塞 | 能力物取得後の高さ 84px のプレイヤーが低天井で進行不能になり得る | `criticalPath` と床上 3 タイル検証を Playwright で実行 |
+| ステージ間の難易度差 | 地形変更で難易度が逆転または同等化し得る | 敵数・ギャップ数・高所区間数による score の厳密増加を検証 |
 | 時計工房アセット | 静的画像は `BootScene.preload()` の `load.image()`、アニメーション・能力スプライトは Canvas ビルダーを使用する | `TEX_KEY` 定数で抽象化 |
 
 ---
@@ -288,6 +297,6 @@ Overlap の登録順:
 | 要件カテゴリ | 設計上の対応 |
 |------------|-------------|
 | パフォーマンス | Arcade Physics（軽量 AABB 判定）を採用。敵 AI の段差端検出は `groundMask` の O(1) 参照で毎フレームの地形走査を回避。バンドルサイズ監視（1.6 MB 上限） |
-| 信頼性 | `isCleared` / `isMissed` フラグによる操作無効化。敵速度の毎フレーム強制セットで速度ゼロ化事故防止。`buildStage()` の入力バリデーションで不正なステージ定義を起動時に検出 |
+| 信頼性 | `isCleared` / `isMissed` フラグによる操作無効化。敵速度の毎フレーム強制セットで速度ゼロ化事故防止。`buildStage()` の入力バリデーションに加え、テスト時に `criticalPath` の通行性と段階難度を検証 |
 | セキュリティ | Phaser `add.text()` に渡す文字列はリテラル定数または数値型限定（XSS リスクなし）。CSP `<meta>` で外部リソース読み込みを禁止しつつ、Phaser Loader の画像処理に必要な `img-src blob:` は許可。ハードコーディング禁止（全定数を `gameConfig.ts` に集約） |
 | 可観測性 | DevTools の Performance タブで fps・バンドルサイズを確認。本番監視ツールは未導入（v0.3 以降で検討） |
