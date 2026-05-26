@@ -1,15 +1,23 @@
 import Phaser from 'phaser';
 import {
+  LEGACY_STAGE_INDEX_STORAGE_KEY,
   STAGE_INDEX_STORAGE_KEY,
   TEX_KEY
 } from '../config/gameConfig';
-import { buildPlayerSheet, buildEnemySheet, buildMushroomSheet, buildFireflowerSheet, buildStarSheet, buildFireballSheet } from './spriteSheets';
+import {
+  buildPlayerSheet,
+  buildEnemySheet,
+  buildSpringCoilSheet,
+  buildPulseCoreSheet,
+  buildChronoCrystalSheet,
+  buildPulseBoltSheet
+} from './spriteSheets';
 import { STAGES } from '../stages/index';
 
 const REQUIRED_IMAGE_ASSETS = [
   { key: TEX_KEY.ground, url: new URL('../assets/images/ground.png', import.meta.url).href },
-  { key: TEX_KEY.goal, url: new URL('../assets/images/goal.png', import.meta.url).href },
-  { key: TEX_KEY.coin, url: new URL('../assets/images/coin.png', import.meta.url).href }
+  { key: TEX_KEY.beacon, url: new URL('../assets/images/beacon.png', import.meta.url).href },
+  { key: TEX_KEY.gearBit, url: new URL('../assets/images/gear-bit.png', import.meta.url).href }
 ] as const;
 
 export class BootScene extends Phaser.Scene {
@@ -35,15 +43,16 @@ export class BootScene extends Phaser.Scene {
 
     buildPlayerSheet(this);
     buildEnemySheet(this);
-    buildMushroomSheet(this);
-    buildFireflowerSheet(this);
-    buildStarSheet(this);
-    buildFireballSheet(this);
+    buildSpringCoilSheet(this);
+    buildPulseCoreSheet(this);
+    buildChronoCrystalSheet(this);
+    buildPulseBoltSheet(this);
 
     let stageIndex = 0;
     let hasStoredIndex = false;
     try {
-      const stored = sessionStorage.getItem(STAGE_INDEX_STORAGE_KEY);
+      const stored = sessionStorage.getItem(STAGE_INDEX_STORAGE_KEY)
+        ?? sessionStorage.getItem(LEGACY_STAGE_INDEX_STORAGE_KEY);
       if (stored !== null) {
         const parsed = Number.parseInt(stored, 10);
         if (Number.isInteger(parsed) && parsed >= 0 && parsed < STAGES.length) {
@@ -51,6 +60,7 @@ export class BootScene extends Phaser.Scene {
           hasStoredIndex = true;
         }
         sessionStorage.removeItem(STAGE_INDEX_STORAGE_KEY);
+        sessionStorage.removeItem(LEGACY_STAGE_INDEX_STORAGE_KEY);
       }
     } catch { /* sessionStorage 利用不可時は stageIndex=0 のまま */ }
 

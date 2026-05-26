@@ -19,9 +19,9 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
       },
       manifest: {
-        name: 'mario-game',
-        short_name: 'mario-game',
-        description: 'Browser-based 2D side-scrolling platformer.',
+        name: 'CHIKU CLOCK RUN',
+        short_name: 'chiku-clock-run',
+        description: 'Clockwork-themed 2D side-scrolling platformer.',
         lang: 'ja',
         theme_color: '#000000',
         background_color: '#000000',

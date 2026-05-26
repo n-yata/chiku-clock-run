@@ -5,7 +5,7 @@
 ## ディレクトリ構成
 
 ```
-mario-game/
+chiku-clock-run/
 ├── src/                          # アプリケーション本体（TypeScript + Phaser 3）
 │   ├── main.ts                   # Phaser.Game エントリポイント
 │   ├── audio/                    # 音声合成レイヤ（Web Audio API、Phaser 非依存）
@@ -13,7 +13,7 @@ mario-game/
 │   ├── scenes/                   # Phaser Scene 群
 │   │   ├── BootScene.ts          # Canvas API でスプライトシート生成 → TitleScene へ遷移（リロード復帰時は GameScene 直行）
 │   │   ├── TitleScene.ts         # タイトル画面（SPACE/Enter/Tap でゲーム開始、全クリア後に自動遷移で戻り先）
-│   │   ├── GameScene.ts          # ランタイム（地形構築・操作・カメラ・ゴール・リスタート・音声）
+│   │   ├── GameScene.ts          # ランタイム（地形構築・操作・カメラ・ビーコン・能力・音声）
 │   │   ├── spriteSheets.ts       # Canvas API によるスプライトシート生成（プレイヤー 4F・敵 2F）
 │   │   └── animations.ts         # Phaser アニメーション定義（player_idle/walk/jump・enemy_walk）
 │   ├── config/                   # ゲーム全体の定数集約
@@ -24,7 +24,7 @@ mario-game/
 │       ├── stage02.ts            # STAGE_02 定数
 │       └── stage03.ts            # STAGE_03 定数
 ├── scripts/                      # ビルド補助スクリプト（Node.js、標準ライブラリのみ）
-│   └── generate-icons.mjs        # PWA アイコン生成（192/512/maskable-512 の RGBA PNG 3 種）
+│   └── generate-icons.mjs        # 時計 PWA アイコン + 歯車片 / ビーコン PNG 生成
 ├── tests/
 │   └── e2e/
 │       └── game-visual.spec.ts   # Playwright による canvas 描画検証
@@ -33,9 +33,6 @@ mario-game/
 │   │   ├── icon-192.png          # 192×192 RGBA PNG（通常アイコン）
 │   │   ├── icon-512.png          # 512×512 RGBA PNG（通常アイコン）
 │   │   └── icon-maskable-512.png # 512×512 RGBA PNG（maskable、80% safe zone 適用）
-│   └── assets/
-│       └── images/               # スプライト PNG（Kenney "Pixel Platformer" CC0）※src/ に移動済み
-│           └── KENNEY_LICENSE.txt  # CC0 ライセンス原文
 ├── index.html                    # Vite エントリ HTML（CSP `<meta>` 含む）
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
 ├── playwright.config.ts          # Playwright E2E 設定（Vite dev server 自動起動）
@@ -68,20 +65,20 @@ mario-game/
 | ディレクトリ / ファイル | 役割 |
 |----------------------|------|
 | `src/main.ts` | `Phaser.Game` 起動。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| `src/audio/AudioManager.ts` | Web Audio API による SE 5 種（ジャンプ・コイン・踏みつけ・ミス・ゴール）と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応。Phaser 非依存の純粋クラス |
+| `src/audio/AudioManager.ts` | Web Audio API による歯車片取得・ビーコン到達・能力取得を含む SE と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応 |
 | `src/scenes/BootScene.ts` | Canvas API で `buildPlayerSheet` / `buildEnemySheet` を呼びスプライトシートを生成後、通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
 | `src/scenes/TitleScene.ts` | タイトルテキスト + 「Press SPACE / Tap to Start」プロンプト（点滅）を表示。SPACE / Enter / タップで `GameScene` へ遷移。`Scale.RESIZE` 対応の `layout()` で中央配置を維持。全クリア後の自動遷移先 |
-| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI（壁・段差端反転）/ コイン取得 / スコア HUD / ミス演出 + 完全リスタート / ゴール Overlap / R リスタート（→ TitleScene）/ AudioManager 統合 |
+| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 能力アイテム / ビーコン Overlap / AudioManager 統合 |
 | `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`textures.exists` による冪等チェック付き |
 | `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
-| `src/config/gameConfig.ts` | 物理（GRAVITY_Y / PLAYER_SPEED / JUMP_VELOCITY 等）・敵 / コイン物理・ミス演出・HUD スタイル・SE/BGM パラメータ・寸法・閾値・テクスチャキーの単一集約点 |
-| `src/stages/stage01.ts` | 1 ステージ分のタイル定義（`'.', '#', 'P', 'G', 'E', 'C'` で構成された 2 次元文字列配列。`'E'` は敵、`'C'` はコイン） |
+| `src/config/gameConfig.ts` | 物理・障害機 / 歯車片 / 能力アイテム・HUD・SE/BGM・寸法・テクスチャキーの単一集約点 |
+| `src/stages/stage01.ts` | 1 ステージ分のタイル定義。`'E'` は巻きネジ障害機、`'C'` は歯車片、`'M'` / `'F'` / `'S'` は能力アイテム |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定。Phaser Loader 用に `img-src` は `blob:` を許可 |
-| `scripts/generate-icons.mjs` | PWA アイコン生成スクリプト。Node.js 標準ライブラリ（`node:zlib` / `node:fs` / `node:path`）のみ使用。`npm run generate-icons` で実行。赤背景（#E52521）+ 白「M」のアイコンを 3 種生成 |
+| `scripts/generate-icons.mjs` | Node.js 標準ライブラリのみで時計文字盤 / 歯車モチーフの PWA アイコンと小型ゲーム PNG を決定的に生成 |
 | `public/icons/` | PWA アイコン 3 種。`manifest.webmanifest` から参照される。`generate-icons.mjs` で再生成可能 |
 | `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで manifest / SW を自動生成。PNG の data URI 化を避けるため `assetsInlineLimit: 0` を設定 |
 | `playwright.config.ts` | `npm run test:e2e` 用設定。Chromium と Vite dev server を使って canvas 描画を検証 |
-| `tests/e2e/` | Playwright E2E テスト。`game-visual.spec.ts` は地面・コインの canvas ピクセルを検証 |
+| `tests/e2e/` | Playwright E2E テスト。`game-visual.spec.ts` は地面・歯車片・巻きネジ障害機の canvas ピクセルを検証 |
 | `docs/` | 永続的ドキュメント 6 本（`product-requirements.md` / `functional-design.md` / `architecture.md` / `repository-structure.md` / `development-guidelines.md` / `glossary.md`） |
 | `docs/template/` | 永続的ドキュメントのひな形 |
 | `.steering/[YYYYMMDD]-[開発タイトル]/` | スプリント単位の要求・設計・タスクリスト・決定事項ログ |

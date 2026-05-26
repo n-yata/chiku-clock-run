@@ -17,22 +17,26 @@
 
 | 用語 | 英語 | 定義 |
 |------|------|------|
-| プレイヤー | Player | ユーザーが操作する自機キャラクター。赤い四角のプレースホルダで表現（v0.2 時点） |
+| プレイヤー | Player | ユーザーが操作する時計工房の探索者「チク」。Canvas スプライトで表現する |
 | ステージ | Stage | 1 プレイで踏破する 1 つのレベル。タイル 2 次元配列で定義される |
 | タイル | Tile | ステージ定義の最小単位（`TILE_SIZE` px × `TILE_SIZE` px）。文字 1 文字が 1 タイルに対応 |
 | スポーン位置 | Spawn Position | プレイヤーの初期出現位置。`'P'` タイルで指定。ミス時にはここへ戻る |
-| ゴール | Goal | ステージ最終地点のオブジェクト。`'G'` タイルで指定。プレイヤーが触れるとクリア判定 |
-| 敵 | Enemy | ステージ内を徘徊する障害キャラクター（クリボー風）。`'E'` タイルで配置 |
-| コイン | Coin | プレイヤーが触れると取得できるアイテム。`'C'` タイルで配置 |
-| クリア | Clear | ゴールに触れてステージを完了すること。クリア後は R キー / タッチでリスタート |
+| クロックビーコン | Clock Beacon | ステージ最終地点の時計型発信機。`'G'` タイルで指定。プレイヤーが触れるとクリア判定 |
+| 巻きネジ障害機 | Winder | ステージ内を徘徊する時計仕掛けの障害機。`'E'` タイルで配置 |
+| 歯車片 | Gear Bit | プレイヤーが触れると取得できる収集物。`'C'` タイルで配置 |
+| ぜんまい | Spring Coil | 取得するとプレイヤーが成長する能力アイテム。`'M'` タイルで配置 |
+| パルスコア | Pulse Core | 取得するとパルス弾を撃てる能力アイテム。`'F'` タイルで配置 |
+| クロノクリスタル | Chrono Crystal | 取得すると一定時間ダメージを無効化する能力アイテム。`'S'` タイルで配置 |
+| パルス弾 | Pulse Bolt | パルス能力中に発射でき、障害機を停止させる投射物 |
+| クリア | Clear | クロックビーコンに触れてステージを完了すること。クリア後は R キー / タッチでリスタート |
 | ミス | Miss | 敵に横・下から接触、または落下閾値（`FALL_THRESHOLD_Y`）を超えたときの失敗状態。スポーン位置へリセットされる |
 | 踏みつけ | Stomp | プレイヤーが敵の上から落下して当たること。敵を消滅させプレイヤーに反発速度を与える |
-| HUD | HUD | 画面上に常時表示されるコイン取得数等の情報。カメラスクロールに追従しない（`setScrollFactor(0)`）|
-| スコア | Score | v0.2 時点ではコイン取得数のみで集計。敵撃破スコアは v0.3 以降 |
-| プレースホルダ | Placeholder | 外部アセット未導入の現状で `BootScene` がプログラム生成する色付き四角テクスチャ |
-| リスタート | Restart | ステージを初期状態に戻すこと。`window.location.reload()` によるページ全体のリロードで実現 |
+| HUD | HUD | 画面上に常時表示される歯車片取得数等の情報。カメラスクロールに追従しない（`setScrollFactor(0)`）|
+| スコア | Score | 現行では歯車片取得数を表示する |
+| ローカル生成アセット | Generated Asset | 時計工房の意匠に合わせてスクリプトまたは Canvas ビルダーで再現可能に生成する画像・スプライト |
+| リスタート | Restart | ステージを初期状態に戻すこと。通常は `scene.restart()` を使い、障害再発時のみ全体リロードへ切り替えられる |
 | 落下 | Fall | プレイヤーの Y 座標が `FALL_THRESHOLD_Y` を超えた状態。ミスと同一フローでリセットされる |
-| タッチゾーン | Touch Zone | タッチ入力の画面領域区分。画面左半分（ジャンプ）/ 右半分（移動）に分割 |
+| タッチゾーン | Touch Zone | タッチ入力の画面領域区分。左側スライドで移動し、右側タップでジャンプ、能力中は右側ダブルタップで発射する |
 
 ---
 
@@ -40,7 +44,7 @@
 
 | 用語 | 英語 | 定義 |
 |------|------|------|
-| SE | Sound Effect | ゲーム内イベント（ジャンプ・コイン取得・踏みつけ・ミス・ゴール）に対応する効果音。`AudioManager.playSe()` で再生 |
+| SE | Sound Effect | ゲーム内イベント（ジャンプ・歯車片取得・踏みつけ・ミス・ビーコン到達・能力取得）に対応する効果音。`AudioManager.playSe()` で再生 |
 | BGM | Background Music | ステージ中ループ再生されるバックグラウンドミュージック。16 ステップの矩形波アルペジオ。`AudioManager.startBgm()` / `stopBgm()` で制御 |
 | AudioManager | AudioManager | `src/audio/AudioManager.ts` に実装された音声合成クラス。Web Audio API を使い `OscillatorNode` / `GainNode` の短命グラフで SE と BGM を生成する。Phaser に非依存 |
 | AudioContext unlock | AudioContext unlock | iOS Safari では最初のユーザー入力イベントのコールスタック内で `AudioContext` を生成・resume しないと音が出ない制約がある。`AudioManager.unlock()` が最初のキー押下 / タップで呼ばれることでこの制約を回避する |
@@ -53,15 +57,15 @@
 |------|------|------|
 | Phaser 3 | Phaser 3 | 本プロジェクトで採用している 2D ブラウザゲームエンジン。Scene / Physics / Input / Camera を提供 |
 | Arcade Physics | Arcade Physics | Phaser の軽量 AABB 物理エンジン。重力・速度・衝突判定を提供する |
-| シーン | Scene | Phaser の実行単位。本プロジェクトでは `BootScene`（テクスチャ生成）と `GameScene`（ゲームランタイム）の 2 シーン構成 |
-| StaticGroup | StaticGroup | 物理的に動かない Sprite の集合（地面・コイン）。位置変更後は `refreshBody()` を呼ぶ必要がある |
+| シーン | Scene | Phaser の実行単位。本プロジェクトでは `BootScene`（読込・生成）、`TitleScene`（開始画面）、`GameScene`（ゲームランタイム）の 3 シーン構成 |
+| StaticGroup | StaticGroup | 物理的に動かない Sprite の集合（地面・歯車片・能力アイテム）。位置変更後は `refreshBody()` を呼ぶ必要がある |
 | Group | Group | 動的に動く Sprite の集合（敵）。毎フレーム物理演算が走る |
-| Overlap | Overlap | 物理的に停止させずに接触を検出する Phaser の仕組み。ゴール判定・コイン取得・敵踏みつけに使用 |
+| Overlap | Overlap | 物理的に停止させずに接触を検出する Phaser の仕組み。ビーコン判定・歯車片取得・障害機踏みつけに使用 |
 | Collider | Collider | 物理的な衝突応答を伴う Phaser の仕組み。プレイヤー・敵と地面の衝突に使用 |
 | groundMask | groundMask | ステージ全タイルの地面有無を `boolean[][]` で表したキャッシュ。敵 AI の段差端検出に O(1) で参照 |
 | StageDefinition | StageDefinition | ステージを表す TypeScript インターフェース。`id` / `cols` / `rows` / `tiles: string[]` を持つ |
 | BuiltStage | BuiltStage | `buildStage()` が `StageDefinition` から構築した実行時オブジェクト群（Phaser Sprite / Group / 座標情報）|
-| TileChar | TileChar | タイル文字の型定義。`'.' | '#' | 'P' | 'G' | 'E' | 'C'` のユニオン型 |
+| TileChar | TileChar | タイル文字の型定義。`'.' | '#' | 'P' | 'G' | 'E' | 'C' | 'M' | 'F' | 'S'` のユニオン型 |
 | Vite | Vite | フロントエンドビルドツール。HMR 付き開発サーバーと本番ビルド（TypeScript コンパイル含む）を提供 |
 | TypeScript | TypeScript | 本プロジェクトの実装言語（JavaScript の型付きスーパーセット）。v5.4 を使用 |
 
@@ -120,7 +124,7 @@
 
 | 略語 | 正式名称 | 定義 |
 |------|---------|------|
-| HUD | Heads-Up Display | 画面上に常時オーバーレイ表示される情報（コイン数等） |
+| HUD | Heads-Up Display | 画面上に常時オーバーレイ表示される情報（歯車片数等） |
 | CSP | Content Security Policy | ブラウザが外部リソース読み込みを制御するセキュリティポリシー |
 | FPS | Frames Per Second | 1 秒あたりの描画フレーム数。本プロジェクトの目標値は 60 fps |
 | CDN | Content Delivery Network | 静的コンテンツを地理的に分散配信するネットワーク |

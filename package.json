@@ -1,9 +1,9 @@
 {
-  "name": "mario-game",
+  "name": "chiku-clock-run",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Browser-based 2D side-scrolling platformer (Mario-like) built with Phaser 3.",
+  "description": "Clockwork-themed browser-based 2D side-scrolling platformer built with Phaser 3.",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",

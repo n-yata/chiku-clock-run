@@ -21,7 +21,7 @@ graph LR
     B -->|通常起動| T[TitleScene]
     B -->|リロード復帰| G[GameScene]
     T -->|SPACE / Enter / Tap| G
-    G -->|全クリア後自動 / R キー| T
+    G -->|全クリア後自動| T
 ```
 
 ```
@@ -49,8 +49,8 @@ sequenceDiagram
     participant GS as GameScene
 
     U->>BS: URL アクセス（ページロード）
-    BS->>BS: preload(): Graphics.generateTexture() × 5種
-    Note over BS: player / ground / goal / enemy / coin
+    BS->>BS: preload(): 静的画像を読込 / Canvas スプライトを生成
+    Note over BS: player / ground / beacon / winder / gearBit
     alt 通常起動（sessionStorage キーなし）
         BS->>TS: create(): scene.start('TitleScene')
         TS-->>U: タイトル + プロンプト表示（点滅）
@@ -60,7 +60,7 @@ sequenceDiagram
         BS->>GS: scene.start('GameScene', { stageIndex: N })
     end
     GS->>GS: buildStage(stage)
-    Note over GS: タイル文字列をパース→地形/ゴール/敵/コインを配置
+    Note over GS: タイル文字列をパース→地形/クロックビーコン/障害機/歯車片を配置
     GS->>GS: Arcade Physics コライダー / Overlap 登録
     GS->>GS: カメラ追従・HUD テキスト・タッチイベント セットアップ
     GS-->>U: ゲーム画面描画（60 fps ループ開始）
@@ -85,10 +85,10 @@ sequenceDiagram
 ```
 
 **動作の核:**
-- Overlap コールバックはゴール → 敵 → コインの順に登録し、`isCleared` フラグで敵・コインの二重発火を防ぐ
+- Overlap コールバックはクロックビーコン → 障害機 → 歯車片の順に登録し、`isCleared` フラグで障害機・歯車片の二重発火を防ぐ
 - 敵の速度は毎フレーム強制セットし、衝突後の速度ゼロ化事故を防ぐ
 - 敵の段差端検出は `groundMask` を O(1) 参照する（毎フレーム地形走査なし）
-- `window.location.reload()` によるリスタートで Phaser の物理ワールド・テクスチャを完全再初期化する
+- 通常のリスタートと次ステージ遷移は `scene.restart()` を使用し、床貫通再発時のみ `USE_HARD_RELOAD_FALLBACK` で全体リロードへ切り替えられる
 
 ---
 
@@ -99,9 +99,9 @@ sequenceDiagram
 | コンポーネント | ファイル | 責務 |
 |-------------|---------|------|
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| BootScene | `src/scenes/BootScene.ts` | `Graphics.generateTexture()` で 5 種のプレースホルダテクスチャを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
+| BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・能力アイテムの Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
 | TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
-| GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 敵 AI / コイン取得 / スコア HUD / ミス演出 / ゴール判定 / 全クリア後 `TitleScene` 遷移 |
+| GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 障害機 AI / 歯車片取得 / 収集 HUD / 能力アイテム / ビーコン判定 / 全クリア後 `TitleScene` 遷移 |
 | ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
 | ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
 
@@ -122,7 +122,7 @@ sequenceDiagram
 | メソッド | 対象 | 内容 |
 |---------|------|------|
 | `GET` | `index.html` | Vite エントリ HTML（CSP `<meta>` 含む） |
-| `GET` | `assets/*.js` | Phaser + ゲームロジック バンドル（< 1.5 MB） |
+| `GET` | `assets/*.js` | Phaser + ゲームロジック バンドル（< 1.6 MB） |
 | `GET` | `assets/*.js.map` | ソースマップ（デバッグ用、任意） |
 
 - WebSocket / REST API / GraphQL は使用しない
@@ -133,7 +133,7 @@ sequenceDiagram
 | 項目 | 値 | 設定場所 |
 |------|----|---------|
 | base パス | 環境変数 `VITE_BASE_PATH` から取得（デフォルト `/`） | `vite.config.ts` |
-| バンドルサイズ上限 | 1.5 MB（`dist/assets/*.js` 合計） | CI ビルド時に目視確認 |
+| バンドルサイズ上限 | 1.6 MB（`dist/assets/*.js` 合計、gzip 後 360 KB 目安） | CI ビルド時に目視確認 |
 
 ---
 
@@ -163,7 +163,10 @@ interface StageDefinition {
 | `P` | プレイヤースポーン | 1 ステージに 1 個・左三分の一以内 |
 | `G` | ゴール | 1 ステージに 1 個 |
 | `E` | 敵スポーン | 1〜8 個・真下が `#` 必須 |
-| `C` | コイン | 1〜30 個 |
+| `C` | 歯車片 | 1〜30 個 |
+| `M` | ぜんまい | 0〜5 個 |
+| `F` | パルスコア | 0〜3 個 |
+| `S` | クロノクリスタル | 0〜2 個 |
 
 #### BuiltStage（buildStage() 生成物）
 
@@ -172,8 +175,8 @@ interface BuiltStage {
   ground: Phaser.Physics.Arcade.StaticGroup;  // 地面 Sprite 群
   goal: Phaser.Physics.Arcade.Sprite;         // ゴール Sprite
   enemies: Phaser.Physics.Arcade.Group;       // 敵 Sprite 群（動的）
-  coins: Phaser.Physics.Arcade.StaticGroup;   // コイン Sprite 群（静的）
-  coinTotal: number;                          // ステージ内コイン総数
+  gearBits: Phaser.Physics.Arcade.StaticGroup;  // 歯車片 Sprite 群（静的）
+  gearBitTotal: number;                         // ステージ内歯車片総数
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;  // 地面有無マスク（敵AI用）
   spawnX: number;                             // プレイヤー初期 X 座標
   spawnY: number;                             // プレイヤー初期 Y 座標
@@ -186,8 +189,8 @@ interface BuiltStage {
 |------------|----|----|
 | `isCleared` | `boolean` | ゴール達成済みフラグ |
 | `isMissed` | `boolean` | ミス演出中フラグ |
-| `coinsCollected` | `number` | 取得済みコイン数 |
-| `coinTotal` | `number` | ステージ内コイン総数 |
+| `gearBitsCollected` | `number` | 取得済み歯車片数 |
+| `gearBitTotal` | `number` | ステージ内歯車片総数 |
 | `touchLeft` | `boolean` | タッチ左移動中 |
 | `touchRight` | `boolean` | タッチ右移動中 |
 | `touchJumpRequested` | `boolean` | タッチジャンプ要求フラグ（1 フレームで消費） |
@@ -207,11 +210,11 @@ stateDiagram-v2
     Missed --> Playing : MISS_FLASH_MS 後 scene.restart（同ステージ）
     Cleared --> Playing : 次ステージへ fadeOut → scene.restart
     Cleared --> Title : 全クリア → ALL_CLEAR_TO_TITLE_DELAY_MS 後 scene.start('TitleScene')
-    Playing --> Title : R キー（restartFromTop）
+    Playing --> Playing : R キー（同ステージを再起動）
 ```
 
 - `isCleared` / `isMissed` フラグが立った後は `update()` でプレイヤー速度を 0 に固定
-- ミス時はプレイヤーを白くフラッシュ（`MISS_FLASH_COLOR`）し `MISS_FLASH_MS` 後にリロード
+- ミス時はプレイヤーを白くフラッシュ（`MISS_FLASH_COLOR`）し `MISS_FLASH_MS` 後に同ステージを再起動
 
 ### 敵 AI（updateEnemyAi）
 
@@ -258,15 +261,15 @@ stateDiagram-v2
 - 長押し（`TOUCH_HOLD_MS` 以上）でタッチ側に応じて `touchLeft` / `touchRight` をセット
 - `pointerupoutside` も `pointerup` と同一ハンドラで処理
 
-### ゴール / 敵 / コイン優先制御
+### クロックビーコン / 障害機 / 歯車片優先制御
 
 Overlap の登録順:
 
 1. `player` × `goal` → `onGoalHit`
 2. `player` × `enemies` → `onEnemyOverlap`
-3. `player` × `coins` → `onCoinOverlap`
+3. `player` × `gearBits` → `onGearBitOverlap`
 
-ゴールを先に登録することで同フレーム発火時にゴールコールバックが先行する。さらに `onEnemyOverlap` / `onCoinOverlap` 冒頭の `isCleared` ガードにより、ゴール成立後の敵・コインコールバックを無効化する。
+クロックビーコンを先に登録することで同フレーム発火時にクリアコールバックが先行する。さらに `onEnemyOverlap` / `onGearBitOverlap` 冒頭の `isCleared` ガードにより、クリア成立後の障害機・歯車片コールバックを無効化する。
 
 ---
 
@@ -274,9 +277,9 @@ Overlap の登録順:
 
 | 機能 | 影響 | 緩和策 |
 |------|------|------|
-| `window.location.reload()` リスタート | ページ全体を再ロードするため Phaser の物理ワールド・テクスチャが完全再初期化される。ロードに数百 ms 〜 1 秒かかる | 許容済み（`scene.restart()` では床貫通バグが再現するため意図的な選択） |
+| リスタート方式 | 通常は `scene.restart()` で同一ステージまたは次ステージへ遷移する。床貫通問題が再発した場合のみ `USE_HARD_RELOAD_FALLBACK = true` で `window.location.reload()` 経路へ切り替える | フォールバック定数で切替可能 |
 | `StageDefinition.tiles` 文字列配列 | ステージ追加時は `src/stages/` にファイルを追加するだけ。既存 `GameScene.buildStage()` は `StageDefinition` 型を受け取るため変更不要 | 型で保証 |
-| プレースホルダテクスチャ | `BootScene.preload()` の `generateTexture()` を `load.image()` に置換するだけで外部アセット化できる（`TEX_KEY` で抽象化済み） | `TEX_KEY` 定数で抽象化 |
+| 時計工房アセット | 静的画像は `BootScene.preload()` の `load.image()`、アニメーション・能力スプライトは Canvas ビルダーを使用する | `TEX_KEY` 定数で抽象化 |
 
 ---
 
@@ -284,7 +287,7 @@ Overlap の登録順:
 
 | 要件カテゴリ | 設計上の対応 |
 |------------|-------------|
-| パフォーマンス | Arcade Physics（軽量 AABB 判定）を採用。敵 AI の段差端検出は `groundMask` の O(1) 参照で毎フレームの地形走査を回避。バンドルサイズ監視（1.5 MB 上限） |
+| パフォーマンス | Arcade Physics（軽量 AABB 判定）を採用。敵 AI の段差端検出は `groundMask` の O(1) 参照で毎フレームの地形走査を回避。バンドルサイズ監視（1.6 MB 上限） |
 | 信頼性 | `isCleared` / `isMissed` フラグによる操作無効化。敵速度の毎フレーム強制セットで速度ゼロ化事故防止。`buildStage()` の入力バリデーションで不正なステージ定義を起動時に検出 |
 | セキュリティ | Phaser `add.text()` に渡す文字列はリテラル定数または数値型限定（XSS リスクなし）。CSP `<meta>` で外部リソース読み込みを禁止しつつ、Phaser Loader の画像処理に必要な `img-src blob:` は許可。ハードコーディング禁止（全定数を `gameConfig.ts` に集約） |
 | 可観測性 | DevTools の Performance タブで fps・バンドルサイズを確認。本番監視ツールは未導入（v0.3 以降で検討） |

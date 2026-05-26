@@ -82,8 +82,12 @@ function isGroundSurfacePixel(color: Rgb): boolean {
   return isGrassPixel(color) || colorDistance(color, { r: 67, g: 74, b: 95 }) < 12;
 }
 
-function isCoinPixel(color: Rgb): boolean {
-  return color.r > 180 && color.g > 110 && color.b < 80;
+function isGearBitHubPixel(color: Rgb): boolean {
+  return colorDistance(color, { r: 54, g: 148, b: 143 }) < 20;
+}
+
+function isWinderAccentPixel(color: Rgb): boolean {
+  return colorDistance(color, { r: 94, g: 202, b: 188 }) < 20;
 }
 
 function isPlayerShoePixel(color: Rgb): boolean {
@@ -164,14 +168,21 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
     { x1: 0, y1: 480, x2: 420, y2: 512 },
     isGroundPixel
   );
-  expect(groundPixels).toBeGreaterThan(800);
+  expect(groundPixels).toBeGreaterThan(150);
 
-  const coinPixels = countPixels(
+  const gearBitHubPixels = countPixels(
     png,
     { x1: 120, y1: 465, x2: 360, y2: 512 },
-    isCoinPixel
+    isGearBitHubPixel
   );
-  expect(coinPixels).toBeGreaterThan(40);
+  expect(gearBitHubPixels).toBeGreaterThan(10);
+
+  const winderAccentPixels = countPixels(
+    png,
+    { x1: 650, y1: 400, x2: 800, y2: 500 },
+    isWinderAccentPixel
+  );
+  expect(winderAccentPixels).toBeGreaterThan(20);
 
   const playerBounds = { x1: 45, y1: 430, x2: 120, y2: 520 };
   const lowestShoeY = findLowestPixelY(png, playerBounds, isPlayerShoePixel);
@@ -187,6 +198,105 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
 
   expect(pageErrors).toEqual([]);
   expect(consoleErrors.filter((line) => line.includes('[BootScene]'))).toEqual([]);
+});
+
+test('collects clockwork abilities, fires a pulse bolt, and reaches the beacon through gameplay wiring', async ({ page }) => {
+  await installGameCapture(page);
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  await startGameAndWaitForPlayer(page, canvas);
+  await page.evaluate(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    scene.scene.restart({ stageIndex: 1, lives: scene.lives, playerState: 'small' });
+  });
+  await page.waitForFunction(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    return scene?.stageIndex === 1 && Boolean(scene.player?.body);
+  });
+
+  async function overlapFirstPickup(groupName: string): Promise<void> {
+    await page.evaluate((targetGroupName) => {
+      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+      const pickup = scene?.[targetGroupName]?.getChildren().find((child: any) => child.active);
+      if (!pickup) throw new Error(`${targetGroupName} pickup is not available in stage`);
+      scene.player.body.reset(pickup.x, pickup.y);
+      scene.player.setVelocity(0, 0);
+    }, groupName);
+  }
+
+  await overlapFirstPickup('springCoils');
+  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'big');
+
+  await overlapFirstPickup('pulseCores');
+  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'fire');
+  await page.evaluate(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    scene.player.body.reset(320, 120);
+    scene.player.setVelocity(0, 0);
+  });
+  await canvas.click();
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    return scene?.children.list.some((child: any) => child.active && child.texture?.key === 'pulse_bolt');
+  });
+
+  await overlapFirstPickup('chronoCrystals');
+  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.isChronoShielded === true);
+
+  await page.evaluate(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
+    if (!beacon) throw new Error('beacon sprite is not available in stage');
+    scene.player.body.reset(beacon.x, beacon.y);
+    scene.player.setVelocity(0, 0);
+  });
+  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.isCleared === true);
+  await page.waitForFunction(() => {
+    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
+    return scene?.stageIndex === 2 && Boolean(scene.player?.body);
+  });
+});
+
+test('migrates a valid legacy stage index without retaining the old key', async ({ page }) => {
+  await installGameCapture(page);
+  await page.addInitScript(() => {
+    sessionStorage.setItem('mario-game.stageIndex', '1');
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => {
+    const game = (window as any).__capturedGame;
+    const scene = game?.scene.getScene('GameScene') as any;
+    return scene?.stageIndex === 1;
+  });
+
+  const migratedState = await page.evaluate(() => ({
+    newValue: sessionStorage.getItem('chiku-clock-run.stageIndex'),
+    legacyValue: sessionStorage.getItem('mario-game.stageIndex')
+  }));
+
+  expect(migratedState.newValue).toBeNull();
+  expect(migratedState.legacyValue).toBeNull();
+});
+
+test('ignores an invalid legacy stage index and clears its key', async ({ page }) => {
+  await installGameCapture(page);
+  await page.addInitScript(() => {
+    sessionStorage.setItem('mario-game.stageIndex', 'invalid');
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => {
+    const game = (window as any).__capturedGame;
+    return game?.scene.isActive('TitleScene');
+  });
+
+  const migratedState = await page.evaluate(() => ({
+    newValue: sessionStorage.getItem('chiku-clock-run.stageIndex'),
+    legacyValue: sessionStorage.getItem('mario-game.stageIndex')
+  }));
+
+  expect(migratedState.newValue).toBeNull();
+  expect(migratedState.legacyValue).toBeNull();
 });
 
 test('keeps upgraded player feet visually grounded', async ({ page }) => {

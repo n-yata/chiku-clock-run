@@ -26,7 +26,7 @@ export function registerAnimations(scene: Phaser.Scene): void {
     repeat: 0
   });
   scene.anims.create({
-    key: ANIM_KEY.enemyWalk,
+    key: ANIM_KEY.winderWalk,
     frames: [
       { key: TEX_KEY.enemySheet, frame: 'enemy_walk1' },
       { key: TEX_KEY.enemySheet, frame: 'enemy_walk2' }

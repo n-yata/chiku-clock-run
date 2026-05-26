@@ -3,18 +3,17 @@ import {
   TEX_KEY,
   PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_SHIRT_COLOR, PLAYER_VEST_COLOR,
   PLAYER_BRASS_COLOR, PLAYER_GOGGLE_LENS_COLOR, PLAYER_SHOE_COLOR,
-  ENEMY_COLOR, ENEMY_DARK_COLOR,
+  ENEMY_COLOR, ENEMY_DARK_COLOR, ENEMY_ACCENT_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
   ENEMY_SPRITE_W, ENEMY_SPRITE_H,
-  MUSHROOM_SPRITE_W, MUSHROOM_SPRITE_H,
-  MUSHROOM_CAP_COLOR, MUSHROOM_DOT_COLOR,
-  MUSHROOM_STEM_COLOR, MUSHROOM_STEM_DARK_COLOR,
-  FIREFLOWER_SPRITE_W, FIREFLOWER_SPRITE_H,
-  FIREFLOWER_PETAL_COLOR, FIREFLOWER_CENTER_COLOR,
-  FIREFLOWER_STEM_COLOR, FIREFLOWER_LEAF_COLOR,
-  STAR_SPRITE_W, STAR_SPRITE_H,
-  STAR_COLOR, STAR_OUTLINE_COLOR,
-  FIREBALL_COLOR, FIREBALL_HIGHLIGHT_COLOR
+  SPRING_COIL_SPRITE_W, SPRING_COIL_SPRITE_H,
+  SPRING_COIL_BRASS_COLOR, SPRING_COIL_HIGHLIGHT_COLOR, SPRING_COIL_DARK_COLOR,
+  PULSE_CORE_SPRITE_W, PULSE_CORE_SPRITE_H,
+  PULSE_CORE_OUTER_COLOR, PULSE_CORE_INNER_COLOR, PULSE_CORE_WIRE_COLOR,
+  CHRONO_CRYSTAL_SPRITE_W, CHRONO_CRYSTAL_SPRITE_H,
+  CHRONO_CRYSTAL_COLOR, CHRONO_CRYSTAL_OUTLINE_COLOR,
+  PULSE_BOLT_SPRITE_W, PULSE_BOLT_SPRITE_H,
+  PULSE_BOLT_COLOR, PULSE_BOLT_HIGHLIGHT_COLOR
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'jump';
@@ -60,131 +59,158 @@ export function buildPlayerSheet(scene: Phaser.Scene): void {
   frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
 }
 
-export function buildMushroomSheet(scene: Phaser.Scene): void {
-  if (scene.textures.exists(TEX_KEY.mushroom)) return;
-  const W = MUSHROOM_SPRITE_W;
-  const H = MUSHROOM_SPRITE_H;
+export function buildSpringCoilSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.springCoil)) return;
+  const W = SPRING_COIL_SPRITE_W;
+  const H = SPRING_COIL_SPRITE_H;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2d context unavailable');
 
-  // 柄（下半分の中央矩形）
-  ctx.fillStyle = toHex(MUSHROOM_STEM_COLOR);
-  ctx.fillStyle = toHex(MUSHROOM_STEM_DARK_COLOR);
-  ctx.fillRect(12, 12, 8, 18);
-  ctx.fillRect(7, 16, 18, 4);
-  ctx.fillStyle = toHex(MUSHROOM_STEM_COLOR);
-  ctx.fillRect(14, 10, 4, 20);
-  ctx.fillRect(9, 17, 14, 2);
-  ctx.fillStyle = toHex(MUSHROOM_CAP_COLOR);
-  ctx.fillRect(8, 5, 16, 5);
+  // Wound brass ribbon over a dark mounting plate.
+  ctx.fillStyle = toHex(SPRING_COIL_DARK_COLOR);
+  ctx.fillRect(6, 25, 20, 5);
+  ctx.fillRect(9, 22, 14, 3);
+  ctx.fillRect(6, 5, 20, 3);
+  ctx.fillRect(6, 5, 3, 17);
+  ctx.fillRect(23, 8, 3, 14);
+  ctx.fillRect(9, 12, 14, 3);
+  ctx.fillRect(9, 19, 14, 3);
 
-  // 傘（赤いドーム = 段階的に幅を広げた矩形 3 段）
-  ctx.fillStyle = toHex(MUSHROOM_CAP_COLOR);
-  ctx.fillRect(5, 8, 22, 5);
-  ctx.fillRect(3, 12, 26, 4);
-  ctx.fillRect(5, 16, 22, 3);
+  ctx.fillStyle = toHex(SPRING_COIL_BRASS_COLOR);
+  ctx.fillRect(8, 6, 16, 2);
+  ctx.fillRect(7, 8, 3, 4);
+  ctx.fillRect(9, 12, 15, 2);
+  ctx.fillRect(22, 14, 3, 5);
+  ctx.fillRect(8, 19, 15, 2);
+  ctx.fillRect(10, 23, 12, 2);
+  ctx.fillRect(8, 26, 16, 3);
 
-  // 水玉（白）
-  ctx.fillStyle = toHex(MUSHROOM_DOT_COLOR);
-  ctx.fillStyle = toHex(MUSHROOM_DOT_COLOR);
-  ctx.fillRect(12, 8, 3, 3);
-  ctx.fillRect(18, 8, 3, 3);
-  ctx.fillRect(15, 13, 3, 2);
+  ctx.fillStyle = toHex(SPRING_COIL_HIGHLIGHT_COLOR);
+  ctx.fillRect(10, 6, 8, 1);
+  ctx.fillRect(10, 12, 7, 1);
+  ctx.fillRect(10, 19, 7, 1);
+  ctx.fillRect(10, 26, 9, 1);
 
-  if (!scene.textures.addCanvas(TEX_KEY.mushroom, canvas)) {
-    throw new Error(`Failed to create texture: ${TEX_KEY.mushroom}`);
+  if (!scene.textures.addCanvas(TEX_KEY.springCoil, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.springCoil}`);
   }
 }
 
-export function buildFireflowerSheet(scene: Phaser.Scene): void {
-  if (scene.textures.exists(TEX_KEY.fireflower)) return;
+export function buildPulseCoreSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.pulseCore)) return;
   const canvas = document.createElement('canvas');
-  canvas.width = FIREFLOWER_SPRITE_W;
-  canvas.height = FIREFLOWER_SPRITE_H;
+  canvas.width = PULSE_CORE_SPRITE_W;
+  canvas.height = PULSE_CORE_SPRITE_H;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2d context unavailable');
 
-  // 茎
-  ctx.fillStyle = toHex(FIREFLOWER_STEM_COLOR);
-  ctx.fillRect(15, 18, 2, 12);
-  // 葉左
-  ctx.fillStyle = toHex(FIREFLOWER_LEAF_COLOR);
-  ctx.fillRect(10, 22, 5, 2);
-  // 葉右
-  ctx.fillRect(17, 22, 5, 2);
-  // 花びら上
-  ctx.fillStyle = toHex(FIREFLOWER_PETAL_COLOR);
-  ctx.fillRect(13, 2, 6, 6);
-  // 花びら左上
-  ctx.fillRect(6, 6, 6, 6);
-  // 花びら右上
-  ctx.fillRect(20, 6, 6, 6);
-  // 花びら左下
-  ctx.fillRect(8, 13, 5, 5);
-  // 花びら右下
-  ctx.fillRect(19, 13, 5, 5);
-  // 花芯
-  ctx.fillStyle = toHex(FIREFLOWER_CENTER_COLOR);
-  ctx.fillRect(13, 8, 6, 6);
+  ctx.fillStyle = toHex(PULSE_CORE_WIRE_COLOR);
+  ctx.fillRect(2, 15, 6, 2);
+  ctx.fillRect(24, 15, 6, 2);
+  ctx.fillRect(15, 25, 2, 5);
+  ctx.fillRect(4, 12, 2, 5);
+  ctx.fillRect(26, 15, 2, 5);
 
-  if (!scene.textures.addCanvas(TEX_KEY.fireflower, canvas)) {
-    throw new Error(`Failed to create texture: ${TEX_KEY.fireflower}`);
-  }
-}
-
-export function buildStarSheet(scene: Phaser.Scene): void {
-  if (scene.textures.exists(TEX_KEY.star)) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = STAR_SPRITE_W;
-  canvas.height = STAR_SPRITE_H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d context unavailable');
-
-  // 輪郭層
-  ctx.fillStyle = toHex(STAR_OUTLINE_COLOR);
-  ctx.fillRect(11, 1, 6, 6);   // 上の点
-  ctx.fillRect(1, 9, 26, 6);   // 横バンド
-  ctx.fillRect(3, 14, 7, 12);  // 左下脚
-  ctx.fillRect(18, 14, 7, 12); // 右下脚
-  // 本体層
-  ctx.fillStyle = toHex(STAR_COLOR);
-  ctx.fillRect(12, 2, 4, 5);   // 上の点
-  ctx.fillRect(2, 10, 24, 4);  // 横バンド
-  ctx.fillRect(4, 14, 5, 11);  // 左下脚
-  ctx.fillRect(19, 14, 5, 11); // 右下脚
-  // ハイライト
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(13, 5, 2, 2);
-
-  if (!scene.textures.addCanvas(TEX_KEY.star, canvas)) {
-    throw new Error(`Failed to create texture: ${TEX_KEY.star}`);
-  }
-}
-
-export function buildFireballSheet(scene: Phaser.Scene): void {
-  if (scene.textures.exists(TEX_KEY.fireball)) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 16;
-  canvas.height = 16;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d context unavailable');
-
-  // 外側オレンジ円
-  ctx.fillStyle = toHex(FIREBALL_COLOR);
+  ctx.fillStyle = toHex(PULSE_CORE_OUTER_COLOR);
   ctx.beginPath();
-  ctx.arc(8, 8, 7, 0, Math.PI * 2);
-  ctx.fill();
-  // 中心黄ハイライト
-  ctx.fillStyle = toHex(FIREBALL_HIGHLIGHT_COLOR);
-  ctx.beginPath();
-  ctx.arc(8, 8, 3, 0, Math.PI * 2);
+  ctx.moveTo(12, 4);
+  ctx.lineTo(20, 4);
+  ctx.lineTo(26, 12);
+  ctx.lineTo(26, 20);
+  ctx.lineTo(20, 27);
+  ctx.lineTo(12, 27);
+  ctx.lineTo(6, 20);
+  ctx.lineTo(6, 12);
+  ctx.closePath();
   ctx.fill();
 
-  if (!scene.textures.addCanvas(TEX_KEY.fireball, canvas)) {
-    throw new Error(`Failed to create texture: ${TEX_KEY.fireball}`);
+  ctx.fillStyle = toHex(PULSE_CORE_INNER_COLOR);
+  ctx.beginPath();
+  ctx.moveTo(13, 9);
+  ctx.lineTo(19, 9);
+  ctx.lineTo(22, 13);
+  ctx.lineTo(22, 19);
+  ctx.lineTo(19, 22);
+  ctx.lineTo(13, 22);
+  ctx.lineTo(10, 19);
+  ctx.lineTo(10, 13);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = toHex(PULSE_CORE_OUTER_COLOR);
+  ctx.fillRect(13, 11, 3, 3);
+
+  if (!scene.textures.addCanvas(TEX_KEY.pulseCore, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.pulseCore}`);
+  }
+}
+
+export function buildChronoCrystalSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.chronoCrystal)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = CHRONO_CRYSTAL_SPRITE_W;
+  canvas.height = CHRONO_CRYSTAL_SPRITE_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  ctx.fillStyle = toHex(CHRONO_CRYSTAL_OUTLINE_COLOR);
+  ctx.beginPath();
+  ctx.moveTo(14, 1);
+  ctx.lineTo(25, 8);
+  ctx.lineTo(22, 20);
+  ctx.lineTo(14, 27);
+  ctx.lineTo(6, 20);
+  ctx.lineTo(3, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = toHex(CHRONO_CRYSTAL_COLOR);
+  ctx.beginPath();
+  ctx.moveTo(14, 3);
+  ctx.lineTo(22, 9);
+  ctx.lineTo(19, 19);
+  ctx.lineTo(14, 24);
+  ctx.lineTo(9, 19);
+  ctx.lineTo(6, 9);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = toHex(CHRONO_CRYSTAL_OUTLINE_COLOR);
+  ctx.fillRect(10, 8, 2, 7);
+  ctx.fillRect(13, 12, 2, 2);
+  ctx.fillRect(14, 13, 5, 2);
+  ctx.fillRect(9, 6, 2, 2);
+
+  if (!scene.textures.addCanvas(TEX_KEY.chronoCrystal, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.chronoCrystal}`);
+  }
+}
+
+export function buildPulseBoltSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.pulseBolt)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = PULSE_BOLT_SPRITE_W;
+  canvas.height = PULSE_BOLT_SPRITE_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  ctx.fillStyle = toHex(PULSE_BOLT_COLOR);
+  ctx.beginPath();
+  ctx.moveTo(8, 1);
+  ctx.lineTo(15, 8);
+  ctx.lineTo(8, 15);
+  ctx.lineTo(1, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = toHex(PULSE_BOLT_HIGHLIGHT_COLOR);
+  ctx.fillRect(7, 4, 2, 8);
+  ctx.fillRect(4, 7, 8, 2);
+  ctx.fillRect(10, 4, 2, 2);
+
+  if (!scene.textures.addCanvas(TEX_KEY.pulseBolt, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.pulseBolt}`);
   }
 }
 
@@ -299,44 +325,37 @@ function drawPlayerSoleSeal(ctx: CanvasRenderingContext2D, frameX: number, frame
 }
 
 function drawEnemyFrame(ctx: CanvasRenderingContext2D, ox: number, frame: EnemyFrame): void {
-  // --- 共通パーツ ---
-  // 頭部
-  ctx.fillStyle = toHex(ENEMY_COLOR);
-  ctx.fillRect(ox + 6, 4, 32, 24);
-
-  // 頭部下端ライン
+  // Winding key and square clockwork casing.
   ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
-  ctx.fillRect(ox + 4, 26, 36, 3);
+  ctx.fillRect(ox + 20, 4, 4, 8);
+  ctx.fillRect(ox + 11, 2, 22, 3);
+  ctx.fillRect(ox + 11, 2, 3, 7);
+  ctx.fillRect(ox + 30, 2, 3, 7);
+  ctx.fillRect(ox + 4, 12, 36, 22);
 
-  // 目白左
-  ctx.fillStyle = toHex(0xffffff);
-  ctx.fillRect(ox + 10, 12, 6, 8);
-  // 目白右
-  ctx.fillRect(ox + 28, 12, 6, 8);
+  ctx.fillStyle = toHex(ENEMY_COLOR);
+  ctx.fillRect(ox + 7, 14, 30, 17);
+  ctx.fillRect(ox + 15, 4, 14, 3);
 
-  // 瞳左
-  ctx.fillStyle = toHex(0x000000);
-  ctx.fillRect(ox + 13, 14, 3, 4);
-  // 瞳右
-  ctx.fillRect(ox + 29, 14, 3, 4);
+  ctx.fillStyle = toHex(ENEMY_ACCENT_COLOR);
+  ctx.fillRect(ox + 10, 18, 5, 5);
+  ctx.fillRect(ox + 29, 18, 5, 5);
+  ctx.fillRect(ox + 17, 17, 10, 3);
+  ctx.fillRect(ox + 20, 20, 4, 7);
+  ctx.fillRect(ox + 17, 24, 3, 3);
 
-  // 牙左
-  ctx.fillStyle = toHex(0xffffff);
-  ctx.fillRect(ox + 12, 22, 4, 3);
-  // 牙右
-  ctx.fillRect(ox + 28, 22, 4, 3);
-
-  // --- フレーム別差分（足のみ）---
+  ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
+  ctx.fillRect(ox + 7, 31, 30, 3);
   ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
   if (frame === 'enemy_walk1') {
-    // 左足
-    ctx.fillRect(ox + 4, 30, 10, 11);
-    // 右足
-    ctx.fillRect(ox + 30, 31, 10, 10);
+    ctx.fillRect(ox + 6, 34, 11, 7);
+    ctx.fillRect(ox + 27, 35, 11, 6);
+    ctx.fillRect(ox + 4, 40, 14, 2);
+    ctx.fillRect(ox + 26, 40, 14, 2);
   } else if (frame === 'enemy_walk2') {
-    // 左足
-    ctx.fillRect(ox + 4, 31, 10, 10);
-    // 右足
-    ctx.fillRect(ox + 30, 30, 10, 11);
+    ctx.fillRect(ox + 6, 35, 11, 6);
+    ctx.fillRect(ox + 27, 34, 11, 7);
+    ctx.fillRect(ox + 4, 40, 14, 2);
+    ctx.fillRect(ox + 26, 40, 14, 2);
   }
 }
