@@ -74,6 +74,10 @@ import {
   CHRONO_CRYSTAL_SPRITE_H,
   CHRONO_CRYSTAL_SPRITE_W,
   STOMP_BOUNCE_VELOCITY,
+  PLAYER_DEATH_BOUNCE_VY,
+  PLAYER_DEATH_FALL_MS,
+  ENEMY_DEATH_FALL_DISTANCE,
+  ENEMY_DEATH_FALL_MS,
   TEX_KEY,
   TILE_SIZE,
   TOUCH_SLIDE_THRESHOLD_PX,
@@ -139,6 +143,7 @@ export class GameScene extends Phaser.Scene {
   private invincibleTimer: Phaser.Time.TimerEvent | null = null;
   private blinkTween: Phaser.Tweens.Tween | null = null;
 
+  private playerGroundCollider: Phaser.Physics.Arcade.Collider | null = null;
   private isInvincible = false;
   private isChronoShielded = false;
   private chronoTimer: Phaser.Time.TimerEvent | null = null;
@@ -179,6 +184,7 @@ export class GameScene extends Phaser.Scene {
     this.gearBitsCollected = 0;
     this.invincibleTimer = null;
     this.blinkTween = null;
+    this.playerGroundCollider = null;
     this.isInvincible = false;
     this.isChronoShielded = false;
     this.fireCooldownUntil = 0;
@@ -214,7 +220,7 @@ export class GameScene extends Phaser.Scene {
       allowGravity: true,
     });
 
-    this.physics.add.collider(this.player, built.ground);
+    this.playerGroundCollider = this.physics.add.collider(this.player, built.ground);
     this.physics.add.collider(this.enemies, built.ground);
 
     // overlap 登録順は二重保証 (design.md §3.4.3 Q5):
@@ -357,9 +363,7 @@ export class GameScene extends Phaser.Scene {
     this.touchJumpRequested = false;
 
     // アニメーション状態遷移
-    if (this.isCleared || this.isMissed) {
-      this.player.anims.play(ANIM_KEY.playerIdle, true);
-    } else if (!onGround) {
+    if (!onGround) {
       this.player.anims.play(ANIM_KEY.playerJump, true);
     } else if (Math.abs(this.player.body!.velocity.x) > 0.1) {
       this.player.anims.play(ANIM_KEY.playerWalk, true);
@@ -685,14 +689,14 @@ export class GameScene extends Phaser.Scene {
     const eBody = eSprite.body as Phaser.Physics.Arcade.Body;
 
     if (this.isChronoShielded) {
-      eSprite.disableBody(true, true);
+      this.killEnemyWithAnimation(eSprite);
       this.audio.playSe('stomp');
       return;
     }
 
     const isStomp = pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
     if (isStomp) {
-      eSprite.disableBody(true, true);
+      this.killEnemyWithAnimation(eSprite);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');
       return;
@@ -727,11 +731,18 @@ export class GameScene extends Phaser.Scene {
     if (this.playerState !== 'small') {
       this.applyPlayerState('small');
     }
-    this.audio.playSe('miss');
-    this.player.setTint(MISS_FLASH_COLOR);
-    this.player.setVelocity(0, 0);
     this.playerState = 'small';
-    this.decrementLifeAndContinue();
+    this.audio.playSe('miss');
+
+    if (reason === 'enemy') {
+      this.playPlayerDeathAnimation();
+      this.time.delayedCall(PLAYER_DEATH_FALL_MS, () => this.decrementLifeAndContinue(), [], this);
+    } else {
+      // 落下死: プレイヤーはすでに画面外のため即時処理
+      this.player.setTint(MISS_FLASH_COLOR);
+      this.player.setVelocity(0, 0);
+      this.decrementLifeAndContinue();
+    }
   }
 
   private fullRestart(): void {
@@ -1047,10 +1058,31 @@ export class GameScene extends Phaser.Scene {
     const sprite = fb as Phaser.Physics.Arcade.Sprite;
     const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
     if (!sprite.active || !eSprite.active) return;
-    eSprite.disableBody(true, true);
+    this.killEnemyWithAnimation(eSprite);
     this.destroyPulseBolt(sprite);
     this.audio.playSe('stomp');
   };
+
+  private playPlayerDeathAnimation(): void {
+    this.playerGroundCollider?.destroy();
+    this.playerGroundCollider = null;
+    this.player.setFlipY(true);
+    this.player.anims.play(ANIM_KEY.playerJump, true);
+    this.player.setVelocity(0, PLAYER_DEATH_BOUNCE_VY);
+  }
+
+  private killEnemyWithAnimation(enemy: Phaser.Physics.Arcade.Sprite): void {
+    enemy.disableBody(true, false);
+    enemy.setFlipY(true);
+    this.tweens.add({
+      targets: enemy,
+      y: enemy.y + ENEMY_DEATH_FALL_DISTANCE,
+      alpha: 0,
+      duration: ENEMY_DEATH_FALL_MS,
+      ease: 'Quad.easeIn',
+      onComplete: () => { enemy.destroy(); }
+    });
+  }
 
   private startInvincible(): void {
     this.invincibleTimer?.remove(false);

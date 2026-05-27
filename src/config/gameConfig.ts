@@ -275,3 +275,13 @@ export const STAGE_CHRONO_CRYSTAL_MIN = 0;
 export const STAGE_CHRONO_CRYSTAL_MAX = 2;
 export const DOUBLE_TAP_MS = 300;
 export const HUD_PULSE_LABEL = 'PC: ←/→ Space/↑ R  [PULSE: Z]   スマホ: スライド移動 / 右タップジャンプ / 右ダブルタップPULSE';
+
+// --- アニメーション追加: やられ演出 ---
+/** プレイヤー死亡時の上方向初速 (px/s)。負値で上方向。 */
+export const PLAYER_DEATH_BOUNCE_VY = -280;
+/** プレイヤー死亡アニメーション開始からライフ処理までの遅延 (ms)。 */
+export const PLAYER_DEATH_FALL_MS = 800;
+/** 敵死亡アニメーションの落下距離 (px)。 */
+export const ENEMY_DEATH_FALL_DISTANCE = 200;
+/** 敵死亡アニメーションの持続時間 (ms)。 */
+export const ENEMY_DEATH_FALL_MS = 500;
