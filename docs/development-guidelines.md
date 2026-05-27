@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-13 |
+| 最終更新 | 2026-05-27 |
 | 担当 | モドリッチ |
 | ステータス | 承認済み |
 
@@ -90,7 +90,7 @@ Conventional Commits 形式を採用:
 
 ### 現状
 
-E2E テストとして Playwright を導入済み。`npm run test:e2e` は Vite dev server を自動起動し、Chromium でゲーム画面の canvas 描画を検証する。初回環境では `npx playwright install chromium` を実行する。
+E2E テストとして Playwright を導入済み。`npm run test:e2e` は先に本番ビルドを実行して PWA manifest 等の配布成果物を生成し、その後 Vite dev server を自動起動して Chromium でゲーム画面の canvas 描画と表示契約を検証する。初回環境では `npx playwright install chromium` を実行する。
 
 ### テストを追加する場合の規約
 
@@ -104,7 +104,7 @@ E2E テストとして Playwright を導入済み。`npm run test:e2e` は Vite 
 | レイヤ | ツール候補 | 対象 |
 |-------|---------|------|
 | ユニット | Vitest | `buildStage()` バリデーション / `StageDefinition` 型 / `gameConfig` 定数の整合性 |
-| E2E | Playwright | canvas 描画 / 能力・ビーコン進行 / 最大プレイヤーの必須ルート通行性 / ステージ難易度進行 / ミスリスタートの基本フロー |
+| E2E | Playwright | landscape manifest 契約 / portrait 専用 UI 不在 / canvas 描画 / 能力・ビーコン進行 / 最大プレイヤーの必須ルート通行性 / ステージ難易度進行 / ミスリスタートの基本フロー |
 
 ### ビルド品質チェック（現行の代替手段）
 
@@ -252,6 +252,10 @@ if (!groundMask[probeRow]?.[probeCol]) { /* 反転 */ }
 #### タッチ操作はゾーン分割方式（画面左側スライド移動 / 右側タップジャンプ）
 
 現在は左側のスライドで移動し、右側のタップでジャンプする。パルス能力中は右側のダブルタップでパルス弾を発射する。操作方式を変更する場合は関連定数と E2E を併せて更新する。
+
+#### モバイルの対応画面向きは横画面のみとする
+
+モバイルで保証するプレイ向きは landscape のみとする。画面向きの契約を変更する場合は、`vite.config.ts` の manifest `orientation`、`src/main.ts` の向き変更専用処理の有無、`index.html` の portrait 専用 UI / CSS の有無、Playwright の orientation 契約テスト、および `docs/` の記述を同時に同期する。portrait 向け案内 UI を暗黙に追加しない。
 
 #### HUD テキストは setScrollFactor(0) でカメラ固定
 

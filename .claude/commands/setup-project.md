@@ -1,6 +1,5 @@
 ---
-name: setup-project
-description: "初回セットアップ: 6つの永続ドキュメントを対話的に作成する"
+description: 初回セットアップ: 6つの永続ドキュメントを対話的に作成する
 ---
 
 # 初回プロジェクトセットアップ
@@ -9,8 +8,9 @@ description: "初回セットアップ: 6つの永続ドキュメントを対話
 
 ## 実行方法
 
-```text
-$setup-project
+```bash
+claude
+> /setup-project
 ```
 
 ## 実行前の確認
@@ -38,7 +38,7 @@ ls docs/ideas/
 
 ### ステップ1: プロダクト要求定義書の作成
 
-1. **`$prd-writing`スキル**をロード
+1. **prd-writingスキル**をロード
 2. `docs/ideas/`の内容を元に`docs/product-requirements.md`を作成
 3. 壁打ちで出たアイデアを具体化：
    - 詳細なユーザーストーリー
@@ -51,31 +51,31 @@ ls docs/ideas/
 
 ### ステップ2: 機能設計書の作成
 
-1. **`$functional-design`スキル**をロード
+1. **functional-designスキル**をロード
 1. `docs/product-requirements.md`を読む
 3. スキルのテンプレートとガイドに従って`docs/functional-design.md`を作成
 
 ### ステップ3: アーキテクチャ設計書の作成
 
-1. **`$architecture-design`スキル**をロード
+1. **architecture-designスキル**をロード
 2. 既存のドキュメントを読む
 3. スキルのテンプレートとガイドに従って`docs/architecture.md`を作成
 
 ### ステップ4: リポジトリ構造定義書の作成
 
-1. **`$repository-structure`スキル**をロード
+1. **repository-structureスキル**をロード
 2. 既存のドキュメントを読む
 3. スキルのテンプレートに従って`docs/repository-structure.md`を作成
 
 ### ステップ5: 開発ガイドラインの作成
 
-1. **`$development-guidelines`スキル**をロード
+1. **development-guidelinesスキル**をロード
 2. 既存のドキュメントを読む
 3. スキルのテンプレートに従って`docs/development-guidelines.md`を作成
 
 ### ステップ6: 用語集の作成
 
-1. **`$glossary-creation`スキル**をロード
+1. **glossary-creationスキル**をロード
 2. 既存のドキュメントを読む
 3. スキルのテンプレートに従って`docs/glossary.md`を作成
 
@@ -101,10 +101,10 @@ ls docs/ideas/
 - ドキュメントの編集: 普通に会話で依頼してください
   例: 「PRDに新機能を追加して」「architecture.mdを見直して」
 
-- 機能の追加: $add-feature [機能名] を実行してください
-  例: $add-feature ユーザー認証
+- 機能の追加: /add-feature [機能名] を実行してください
+  例: /add-feature ユーザー認証
 
-- ドキュメントレビュー: $review-docs [パス] を実行してください
-  例: $review-docs docs/product-requirements.md
+- ドキュメントレビュー: /review-docs [パス] を実行してください
+  例: /review-docs docs/product-requirements.md
 」
 ```

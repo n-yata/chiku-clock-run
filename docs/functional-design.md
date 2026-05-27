@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-05 |
+| 最終更新 | 2026-05-27 |
 | 担当 | バルベルデ |
 | ステータス | 承認済み |
 
@@ -258,15 +258,28 @@ isStomp = player.body.velocity.y > 0
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Holding : pointerdown
-    Holding --> Moving : TOUCH_HOLD_MS 経過（長押し判定）
-    Moving --> Idle : pointerup / pointerupoutside
-    Holding --> Idle : pointerup（短タップ → touchJumpRequested = true）
+    Idle --> Sliding : 左ゾーン pointerdown
+    Sliding --> MovingLeft : pointermove / dx < -TOUCH_SLIDE_THRESHOLD_PX
+    Sliding --> MovingRight : pointermove / dx > TOUCH_SLIDE_THRESHOLD_PX
+    MovingLeft --> Sliding : pointermove / |dx| <= TOUCH_SLIDE_THRESHOLD_PX
+    MovingRight --> Sliding : pointermove / |dx| <= TOUCH_SLIDE_THRESHOLD_PX
+    Sliding --> Idle : pointerup / pointerupoutside
+    MovingLeft --> Idle : pointerup / pointerupoutside
+    MovingRight --> Idle : pointerup / pointerupoutside
+    Idle --> JumpRequested : 右ゾーン pointerdown
+    JumpRequested --> Idle : update() で touchJumpRequested 消費
 ```
 
-- 短タップ（`TOUCH_HOLD_MS` 未満）でジャンプ発火（`touchJumpRequested`）
-- 長押し（`TOUCH_HOLD_MS` 以上）でタッチ側に応じて `touchLeft` / `touchRight` をセット
+- 左ゾーンのスライド距離が `TOUCH_SLIDE_THRESHOLD_PX` を超えると `touchLeft` / `touchRight` をセットする
+- 右ゾーンのタップでジャンプを要求し、`fire` 状態では右ダブルタップでパルス弾を発射する
 - `pointerupoutside` も `pointerup` と同一ハンドラで処理
+
+### 対応画面向き
+
+- モバイルでサポートするプレイ向きは横画面（landscape）のみとする。
+- `vite.config.ts` が生成する PWA manifest の `orientation` は `landscape` を指定する。
+- `index.html` は portrait 用の案内 UI や表示切替 CSS を持たず、`src/main.ts` も向き変更専用のリフレッシュ処理を持たない。
+- `Phaser.Scale.RESIZE` は横画面内での表示領域変化への対応として維持する。
 
 ### クロックビーコン / 障害機 / 歯車片優先制御
 

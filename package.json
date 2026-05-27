@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
     "test:e2e:headed": "playwright test --headed",
     "generate-icons": "node scripts/generate-icons.mjs"
   },

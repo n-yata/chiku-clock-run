@@ -28,7 +28,7 @@ chiku-clock-run/
 │   └── generate-icons.mjs        # 時計 PWA アイコン + 歯車片 / ビーコン PNG 生成
 ├── tests/
 │   └── e2e/
-│       └── game-visual.spec.ts   # Playwright による canvas 描画検証
+│       └── game-visual.spec.ts   # Playwright による landscape 契約・canvas 描画・ゲーム進行検証
 ├── public/                       # Vite 静的ファイル（dist/ にそのままコピー）
 │   ├── icons/                    # PWA アイコン（generate-icons.mjs で生成）
 │   │   ├── icon-192.png          # 192×192 RGBA PNG（通常アイコン）
@@ -38,7 +38,7 @@ chiku-clock-run/
 ├── vite.config.ts                # Vite 設定（base パスは VITE_BASE_PATH から取得）
 ├── playwright.config.ts          # Playwright E2E 設定（Vite dev server 自動起動）
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 設定
-├── package.json                  # 依存（phaser）・dev 依存（Vite / Playwright 等） + scripts
+├── package.json                  # 依存・scripts（test:e2e は build 後に配布 manifest と画面を検証）
 ├── docs/                         # 永続的ドキュメント（6 本）
 │   ├── product-requirements.md   # プロダクト要件定義書
 │   ├── functional-design.md      # 機能設計書
@@ -78,9 +78,10 @@ chiku-clock-run/
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定。Phaser Loader 用に `img-src` は `blob:` を許可 |
 | `scripts/generate-icons.mjs` | Node.js 標準ライブラリのみで時計文字盤 / 歯車モチーフの PWA アイコンと小型ゲーム PNG を決定的に生成 |
 | `public/icons/` | PWA アイコン 3 種。`manifest.webmanifest` から参照される。`generate-icons.mjs` で再生成可能 |
-| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで manifest / SW を自動生成。PNG の data URI 化を避けるため `assetsInlineLimit: 0` を設定 |
+| `vite.config.ts` | `base: process.env.VITE_BASE_PATH ?? '/'`（GitHub Pages 配下用）。`VitePWA` プラグインで landscape 指定の manifest / SW を自動生成。PNG の data URI 化を避けるため `assetsInlineLimit: 0` を設定 |
 | `playwright.config.ts` | `npm run test:e2e` 用設定。Chromium と Vite dev server を使って canvas 描画を検証 |
-| `tests/e2e/` | Playwright E2E テスト。`game-visual.spec.ts` は地面・歯車片・巻きネジ障害機の canvas ピクセルを検証 |
+| `package.json` | `test:e2e` で `npm run build` を前置し、生成された `manifest.webmanifest` を含む配布契約検証を成立させる |
+| `tests/e2e/` | Playwright E2E テスト。`game-visual.spec.ts` は landscape manifest / portrait UI 不在の契約、canvas 描画、能力とステージ進行を直列で検証 |
 | `docs/` | 永続的ドキュメント 6 本（`product-requirements.md` / `functional-design.md` / `architecture.md` / `repository-structure.md` / `development-guidelines.md` / `glossary.md`） |
 | `docs/template/` | 永続的ドキュメントのひな形 |
 | `.steering/[YYYYMMDD]-[開発タイトル]/` | スプリント単位の要求・設計・タスクリスト・決定事項ログ |

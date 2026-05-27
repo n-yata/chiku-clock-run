@@ -23,9 +23,4 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, TitleScene, GameScene]
 };
 
-const game = new Phaser.Game(config);
-
-// iOS Safari では orientationchange 後に resize イベントが遅延するため強制リフレッシュする
-window.addEventListener('orientationchange', () => {
-  setTimeout(() => game.scale.refresh(), 200);
-});
+new Phaser.Game(config);

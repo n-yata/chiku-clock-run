@@ -115,12 +115,12 @@
 ## 拡張・将来課題
 
 - v0.2（実装済み）: 巻きネジ障害機 4 体（踏みつけ停止 / 段差端反転 AI）・歯車片 15 個・収集 HUD・ミス演出
-- モバイル操作改善（実装済み）: 左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理。縦向き時の横向き促進オーバーレイ（CSS `@media orientation`）・ピンチズーム無効化
+- モバイル操作改善（実装済み）: 横画面のみを対応対象とし、左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理とピンチズーム無効化を維持する。portrait 専用オーバーレイや向き変更フォールバックは持たない
 - v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE はジャンプ・歯車片取得・踏みつけ・ミス・ビーコン到達・能力取得等に対応
 - v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
 - v0.6（実装済み）: 静的 PNG 導入。現在は地形に加え、生成済みの歯車片 / クロックビーコン PNG を Vite import 経由で読み込む
-- v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬。時計文字盤と歯車を意匠にしたアイコン 3 種を `scripts/generate-icons.mjs` で生成
+- v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬し、`orientation: landscape` で横画面起動を宣言する。時計文字盤と歯車を意匠にしたアイコン 3 種を `scripts/generate-icons.mjs` で生成
 - v0.8（実装済み）: スプライトアニメーション化 — `document.createElement('canvas')` + `textures.addCanvas` + `Texture.add(name, ...)` によるプログラマティックスプライトシート生成。プレイヤー 4 フレーム（idle/walk1/walk2/jump）・敵 2 フレーム（walk1/walk2）をアニメーション再生。`generateFrameNames` + 名前付きフレームで管理。描画は 32×48 固定座標空間で行い `drawImage` でフレームサイズへスケーリング（サイズ変更に `gameConfig.ts` 定数変更のみで追従）。踏みつけ判定を `pBody.centerY <= eBody.centerY` 方式に変更し高度差バグを解消
 - v1.1（実装済み）: Playwright E2E 導入 — `npm run test:e2e` で Chromium を起動し、地面・歯車片・巻きネジ障害機が canvas に描画されることをピクセル検証
 - 今後の拡張: ライフ / パワーアップ、音量調整 UI、背景画像追加

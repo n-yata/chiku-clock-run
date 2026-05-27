@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import { STAGES } from '../../src/stages/index';
 import {
@@ -8,6 +10,12 @@ import {
 } from '../../src/stages/stageValidation';
 
 test.describe.configure({ mode: 'serial' });
+
+const root = process.cwd();
+
+async function readSource(path: string): Promise<string> {
+  return readFile(resolve(root, path), 'utf8');
+}
 
 type Rgb = {
   readonly r: number;
@@ -19,6 +27,20 @@ const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
 const BACKGROUND: Rgb = { r: 92, g: 148, b: 252 };
 const PLAYER_SHOE: Rgb = { r: 107, g: 66, b: 38 };
+
+test('declares landscape-only display support without portrait fallback UI', async () => {
+  const [manifestJson, mainSource, html] = await Promise.all([
+    readSource('dist/manifest.webmanifest'),
+    readSource('src/main.ts'),
+    readSource('index.html')
+  ]);
+  const manifest: unknown = JSON.parse(manifestJson);
+
+  expect(manifest).toMatchObject({ orientation: 'landscape' });
+  expect(mainSource).not.toContain('orientationchange');
+  expect(html).not.toContain('rotate-notice');
+  expect(html).not.toMatch(/@media\s*\(\s*orientation\s*:\s*portrait\s*\)/);
+});
 
 function colorDistance(a: Rgb, b: Rgb): number {
   return Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
