@@ -24,7 +24,7 @@ GitHub Pages にデプロイし、誰でも URL を開けばすぐ遊べる Web 
 | `development-guidelines.md` | 開発ガイドライン（コーディング規約・テスト規約・ナレッジ蓄積） |
 | `glossary.md` | ユビキタス言語定義 |
 
-各ファイルの章立てひな形は `docs/template/` 配下を参照。
+各ファイルの章立てひな形・作成ガイドは、対応する skill（`.claude/skills/` 配下）のテンプレートを参照。
 
 ### 2. 作業単位のドキュメント（`.steering/[YYYYMMDD]-[開発タイトル]/`）
 
@@ -38,20 +38,31 @@ GitHub Pages にデプロイし、誰でも URL を開けばすぐ遊べる Web 
 | `tasklist.md` | タスクリスト |
 | `decisions.md` | 決定事項ログ（**実装中に判断が発生したら即追記**、最初から作る必要はない） |
 
-各ファイルの章立てひな形は `.steering/template/` 配下を参照。
+各ファイルの章立てひな形は `.claude/skills/steering/templates/` 配下を参照。
 
 ---
 
-## skill による自動発火
+## skill による運用ルールの適用
 
-ドキュメント作成・改訂時は、対応する skill が自動で発火してテンプレ参照と運用ルールを適用する。
+ドキュメント作成・改訂時は、対応する skill を読み込んでテンプレ参照と運用ルールを適用する。
+定義は各 `.claude/skills/<skill 名>/SKILL.md` に格納。
 
-| skill | 発火条件 |
-|-------|---------|
-| `permanent-doc` | `docs/` 配下の新規作成・大幅改訂時 |
-| `steering-doc` | `.steering/[YYYYMMDD]-[開発タイトル]/` 配下のドキュメント作成・更新時 |
+### 永続的ドキュメント（`docs/`）用
 
-定義は `.claude/skills/{permanent-doc,steering-doc}/SKILL.md` に格納。
+| skill | 対象ドキュメント |
+|-------|----------------|
+| `prd-writing` | `product-requirements.md` |
+| `functional-design` | `functional-design.md` |
+| `architecture-design` | `architecture.md` |
+| `repository-structure` | `repository-structure.md` |
+| `development-guidelines` | `development-guidelines.md`（およびコード実装時） |
+| `glossary-creation` | `glossary.md` |
+
+### 作業単位のドキュメント（`.steering/`）用
+
+| skill | 用途 |
+|-------|------|
+| `steering` | `.steering/[YYYYMMDD]-[開発タイトル]/` 配下の作業計画・実装・検証時 |
 
 ---
 
@@ -68,7 +79,7 @@ GitHub Pages にデプロイし、誰でも URL を開けばすぐ遊べる Web 
 5. **実装開始** — 承認後に初めてコードを書く。tasklist.md に基づいて進める
 6. **品質チェック** — クルトワ（security-engineer）レビュー → コミット
 
-> 詳細手順とテンプレ参照は `steering-doc` skill が自動発火して案内する。
+> 詳細手順とテンプレ参照は `steering` skill を読み込んで案内する。
 
 ---
 
