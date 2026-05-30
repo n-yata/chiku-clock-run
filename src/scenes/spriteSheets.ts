@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   TEX_KEY,
-  PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_SHIRT_COLOR, PLAYER_VEST_COLOR,
+  PLAYER_COLOR, PLAYER_SKIN_COLOR,
   PLAYER_BRASS_COLOR, PLAYER_GOGGLE_LENS_COLOR, PLAYER_SHOE_COLOR, PLAYER_SCARF_COLOR,
   ENEMY_COLOR, ENEMY_DARK_COLOR, ENEMY_ACCENT_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
@@ -330,95 +330,137 @@ export function buildEnemySheet(scene: Phaser.Scene): void {
   frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
 }
 
+/**
+ * チク（CHIKU）の描画 — ゼロから再設計。
+ * デザイン原則: 「巨大ゴーグルが顔」。一目で認識できるシルエット。
+ * 32×48 の座標空間で描画し、最終的に 40×56 にスケールされる。
+ */
 function drawChikuFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
-  // idle_b は1px 下にボディをずらして呼吸感を出す
-  const bs = (frame === 'idle_b') ? 1 : 0; // body shift
+  // idle_b はボディを 1px 下にずらして呼吸感を出す
+  const bs = (frame === 'idle_b') ? 1 : 0;
 
-  // ---- 帽子 ----
+  // ================== 帽子（ネイビー、独特なシルエット）==================
   ctx.fillStyle = toHex(PLAYER_COLOR); // ネイビー
-  ctx.fillRect(ox + 7, 4, 18, 5);
-  ctx.fillRect(ox + 5, 8, 22, 3);
+  ctx.fillRect(ox + 9, 0, 14, 4);   // 帽子クラウン（上部）
+  ctx.fillRect(ox + 7, 3, 18, 4);   // 帽子クラウン（メイン）
+  ctx.fillRect(ox + 4, 6, 24, 3);   // ブリム（つば）
+  // ブラスバンド（帽子の識別ポイント）
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 7, 8, 18, 1); // 帽子バンド
+  ctx.fillRect(ox + 7, 6, 18, 2);
+  // 歯車バッジ
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 14, 1, 4, 2);
+  ctx.fillRect(ox + 13, 2, 6, 2);
+  ctx.fillRect(ox + 15, 0, 2, 6);
 
-  // ---- 顔 ----
+  // ================== 顔（ゴーグルがほぼ全部）==================
+  // 額のわずかな肌色
   ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-  ctx.fillRect(ox + 8, 11, 16, 10);
+  ctx.fillRect(ox + 8, 9, 16, 2);
 
-  // ゴーグルストラップ + フレーム
+  // ──── ゴーグル（キャラクターの核心。圧倒的に大きく）────
+  // 全体ストラップ（ブラス）
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 7, 10, 18, 3);  // ストラップ
-  ctx.fillRect(ox + 9, 11, 7, 6);   // 左フレーム
-  ctx.fillRect(ox + 16, 11, 7, 6);  // 右フレーム
+  ctx.fillRect(ox + 4, 9, 24, 2);    // 額ストラップ
 
-  // ゴーグルレンズ（5×4）
+  // 左ゴーグルフレーム（ブラス）
+  ctx.fillRect(ox + 4, 10, 12, 9);   // 左フレーム (12×9)
+
+  // 右ゴーグルフレーム（ブラス）
+  ctx.fillRect(ox + 16, 10, 12, 9);  // 右フレーム (12×9)
+
+  // ブリッジ（中央）
+  ctx.fillRect(ox + 14, 11, 4, 5);   // ブリッジ (4×5)
+
+  // 左レンズ（ティール、巨大！）
   ctx.fillStyle = toHex(PLAYER_GOGGLE_LENS_COLOR);
-  ctx.fillRect(ox + 10, 12, 5, 4);
-  ctx.fillRect(ox + 17, 12, 5, 4);
-  // レンズグレア
+  ctx.fillRect(ox + 5, 11, 9, 7);    // 左レンズ (9×7)
+
+  // 右レンズ
+  ctx.fillRect(ox + 18, 11, 9, 7);   // 右レンズ (9×7)
+
+  // レンズグレア（光の反射）
   ctx.fillStyle = toHex(0xeef8ff);
-  ctx.fillRect(ox + 10, 12, 2, 1);
-  ctx.fillRect(ox + 17, 12, 2, 1);
+  ctx.fillRect(ox + 5, 11, 5, 2);    // 左グレア（大きめ）
+  ctx.fillRect(ox + 18, 11, 5, 2);   // 右グレア
 
-  // 口
-  ctx.fillStyle = toHex(0x2b2118);
-  ctx.fillRect(ox + 16, 18, 5, 2);
+  // 瞳（深みを出す）
+  ctx.fillStyle = toHex(0x003840);
+  ctx.fillRect(ox + 10, 14, 3, 3);   // 左瞳
+  ctx.fillRect(ox + 23, 14, 3, 3);   // 右瞳
 
-  // ---- スカーフ（個性・愛着の核心）----
+  // 顎/頬（ゴーグル下の顔）
+  ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
+  ctx.fillRect(ox + 7, 19, 18, 3);   // 頬・顎ライン
+  // 小さな笑顔
+  ctx.fillStyle = toHex(0xd4916a);
+  ctx.fillRect(ox + 13, 20, 6, 1);   // 口（わずかに）
+
+  // ================== スカーフ（赤、キャラクターの個性）==================
   ctx.fillStyle = toHex(PLAYER_SCARF_COLOR);
-  ctx.fillRect(ox + 7, 19 + bs, 18, 4);  // 首巻き部分
-  ctx.fillRect(ox + 22, 21 + bs, 5, 8);  // 右に垂れるスカーフ
+  ctx.fillRect(ox + 5, 21 + bs, 22, 3);  // 首巻き（ワイド）
+  ctx.fillRect(ox + 22, 23 + bs, 7, 11); // 右に垂れるスカーフ尾（長い）
+  ctx.fillStyle = toHex(0xaa1818);        // スカーフの影（立体感）
+  ctx.fillRect(ox + 5, 23 + bs, 22, 1);  // 影ライン
 
-  // ---- 胴体（bs で呼吸) ----
-  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
-  ctx.fillRect(ox + 5, 22 + bs, 22, 10);
-  ctx.fillStyle = toHex(PLAYER_VEST_COLOR);
-  ctx.fillRect(ox + 8, 22 + bs, 16, 12);
-  ctx.fillRect(ox + 6, 25 + bs, 4, 7);
-  ctx.fillRect(ox + 22, 25 + bs, 4, 7);
-  // ボタン
+  // ================== 胴体（コート）==================
+  ctx.fillStyle = toHex(0x1a3a50);       // ダークティールのコート
+  ctx.fillRect(ox + 5, 22 + bs, 20, 14);
+  // コートの前身頃（やや明るく）
+  ctx.fillStyle = toHex(0x254e6a);
+  ctx.fillRect(ox + 9, 23 + bs, 14, 12);
+  // ブラスボタン（3 個）
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 14, 25 + bs, 2, 2);
-  ctx.fillRect(ox + 18, 25 + bs, 2, 2);
-  ctx.fillRect(ox + 15, 30 + bs, 4, 2);
+  ctx.fillRect(ox + 15, 24 + bs, 2, 2);
+  ctx.fillRect(ox + 15, 27 + bs, 2, 2);
+  ctx.fillRect(ox + 15, 30 + bs, 2, 2);
 
-  // ---- フレーム別: 足・手 ----
+  // ================== フレーム別：足・手 ==================
   if (frame === 'idle' || frame === 'idle_b') {
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 10, 37 + bs, 6, 11 - bs);
-    ctx.fillRect(ox + 16, 37 + bs, 6, 11 - bs);
+    ctx.fillRect(ox + 9,  36 + bs, 7, 12 - bs);
+    ctx.fillRect(ox + 16, 36 + bs, 7, 12 - bs);
     drawChikuHands(ctx, ox, 27 + bs, 27 + bs);
   } else if (frame === 'walk1') {
+    // 左足前・右足後ろ（大きく踏み出す）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 7, 36, 7, 12);
-    ctx.fillRect(ox + 18, 39, 7, 9);
-    drawChikuHands(ctx, ox, 23, 31);
+    ctx.fillRect(ox + 6,  34, 8, 14);  // 左足（前・強く踏み出し）
+    ctx.fillRect(ox + 17, 38, 8,  9);  // 右足（後・持ち上がり）
+    drawChikuHands(ctx, ox, 21, 32);   // 腕を大きく振る
   } else if (frame === 'walk3') {
+    // 中間ポーズ（両足が揃う瞬間）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 9, 38, 6, 10);
-    ctx.fillRect(ox + 17, 38, 6, 10);
+    ctx.fillRect(ox + 8,  37, 7, 11);
+    ctx.fillRect(ox + 17, 37, 7, 11);
     drawChikuHands(ctx, ox, 27, 27);
   } else if (frame === 'walk2') {
+    // 右足前・左足後ろ（walk1 の逆）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 7, 39, 7, 9);
-    ctx.fillRect(ox + 18, 36, 7, 12);
-    drawChikuHands(ctx, ox, 31, 23);
+    ctx.fillRect(ox + 6,  38, 8,  9);  // 左足（後）
+    ctx.fillRect(ox + 17, 34, 8, 14);  // 右足（前・強く）
+    drawChikuHands(ctx, ox, 32, 21);   // 腕逆振り
   } else if (frame === 'jump') {
-    // よりダイナミックなジャンプポーズ（足を後ろに引く）
+    // ダイナミックジャンプ（両腕大きく上げ）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 8, 34, 6, 9);
-    ctx.fillRect(ox + 16, 36, 7, 12);
-    drawChikuHands(ctx, ox, 17, 14); // 両腕を上げる
+    ctx.fillRect(ox + 7,  33, 8, 10);
+    ctx.fillRect(ox + 17, 36, 8, 12);
+    drawChikuHands(ctx, ox, 14, 12);   // 腕を高く！
   }
 }
 
 function drawChikuHands(ctx: CanvasRenderingContext2D, ox: number, leftY: number, rightY: number): void {
-  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
-  ctx.fillRect(ox + 3, leftY, 4, 4);
-  ctx.fillRect(ox + 25, rightY, 4, 4);
+  // コートの袖（ダークティール）
+  ctx.fillStyle = toHex(0x1a3a50);
+  ctx.fillRect(ox + 1, leftY,  5, 6);
+  ctx.fillRect(ox + 26, rightY, 5, 6);
+  // ブラスカフス
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 1, leftY + 4,  5, 1);
+  ctx.fillRect(ox + 26, rightY + 4, 5, 1);
+  // 素手（肌色）
   ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
-  ctx.fillRect(ox + 2, leftY + 3, 4, 3);
-  ctx.fillRect(ox + 26, rightY + 3, 4, 3);
+  ctx.fillRect(ox + 1, leftY + 5,  4, 3);
+  ctx.fillRect(ox + 27, rightY + 5, 4, 3);
 }
 
 function drawPlayerFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {

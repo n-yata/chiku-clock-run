@@ -144,7 +144,7 @@
 - [x] クルトワ（security-engineer）レビュー（XSS / インジェクション / CSP / ハードコーディング観点）
   - [x] Critical / High 指摘なし（Low 1件: CSP unsafe-inline は Phaser 都合の既存設定、本スプリント変更と無関係）
 - [x] 実装後の振り返りを本ファイルに記録
-- [ ] コミット（commit-push）
+- [x] コミット（commit-push）— 05be186
 
 ---
 

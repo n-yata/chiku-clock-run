@@ -1,8 +1,8 @@
 // ゲーム全体の物理・寸法・閾値・テクスチャキーを集約。
 // 数値リテラルの直書き禁止 — シーン側はここから import すること。
 
-export const VIEWPORT_WIDTH = 960;
-export const VIEWPORT_HEIGHT = 540;
+export const VIEWPORT_WIDTH = 640;
+export const VIEWPORT_HEIGHT = 360;
 export const TILE_SIZE = 32;
 
 export const GRAVITY_Y = 800;
@@ -14,7 +14,8 @@ export const PLAYER_SPRITE_H = 56;
 export const BEACON_SPRITE_W = 32;
 export const BEACON_SPRITE_H = 64;
 
-export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
+// ステージ高さに依存しない絶対値（viewport 縮小後も安全マージンを維持）
+export const FALL_THRESHOLD_Y = 800;
 
 export const BG_COLOR = '#0f0c18';
 

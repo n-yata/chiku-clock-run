@@ -15,7 +15,9 @@ document.body.classList.toggle('is-portrait', mq.matches);
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  pixelArt: true,
+  pixelArt: false,    // antialias ON → テキスト・スプライトがスムーズに描画される
+  antialias: true,
+  roundPixels: true,  // スプライトは整数座標で描画してブレを防ぐ
   backgroundColor: BG_COLOR,
   physics: {
     default: 'arcade',
