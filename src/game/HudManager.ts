@@ -170,8 +170,12 @@ export class HudManager {
     );
 
     // 操作説明（右上・右寄せ・鮮明化・等倍）。右端と上端から HUD と同じ余白を取る。
+    // スマホ等の狭い画面で左上 HUD に被らないよう、HUD パネル右端より右の空き幅で折り返す。
     this.instructionText.setResolution(res);
     this.instructionText.setScale(1 / zoom);
+    const hudRightEdge = HUD_PANEL_X + panelScreenW;
+    const wrapWidth = Math.max(140, this.scene.scale.width - hudRightEdge - HUD_PANEL_X - HUD_LINE_GAP);
+    this.instructionText.setWordWrapWidth(wrapWidth, true);
     this.instructionText.setPosition(
       toWorldX(this.scene.scale.width - HUD_PANEL_X),
       toWorldY(HUD_PANEL_Y + HUD_PANEL_PADDING)

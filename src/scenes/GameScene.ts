@@ -116,6 +116,9 @@ export class GameScene extends Phaser.Scene {
   private hud!: HudManager;
   private bgOverlay!: Phaser.GameObjects.Image;
   private playerJuice?: Phaser.Tweens.Tween;
+  // juice の基準スケール（displaySize 確定時に更新）。squash/stretch は常にこの値へ戻す。
+  private playerBaseScaleX = 1;
+  private playerBaseScaleY = 1;
   private particles!: ParticleManager;
   private touch!: TouchController;
   private playerController!: PlayerController;
@@ -803,14 +806,16 @@ export class GameScene extends Phaser.Scene {
   };
 
   /**
-   * スクワッシュ&ストレッチ（juice）。yoyo で必ず元のスケールに戻すため、
-   * displaySize（=スケール）に依存する状態管理や E2E（displayHeight 検証）を壊さない。
+   * スクワッシュ&ストレッチ（juice）。基準スケール（playerBaseScale*）から相対的に変形し、
+   * 開始前に必ず基準へリセットしてから tween する。これにより、前回の tween を途中で
+   * stop() した残差を拾って累積する（着地のたびに潰れていく）バグを防ぐ。
+   * yoyo で基準へ戻すため displaySize 依存の状態管理・E2E（displayHeight 検証）も壊さない。
    */
   private squashStretch(scaleXFactor: number, scaleYFactor: number, durationMs: number): void {
     this.playerJuice?.stop();
-    const baseX = this.player.scaleX;
-    const baseY = this.player.scaleY;
-    this.player.setScale(baseX, baseY);
+    const baseX = this.playerBaseScaleX;
+    const baseY = this.playerBaseScaleY;
+    this.player.setScale(baseX, baseY); // 中途半端なスケール残差を必ずリセット
     this.playerJuice = this.tweens.add({
       targets: this.player,
       scaleX: baseX * scaleXFactor,
@@ -830,6 +835,9 @@ export class GameScene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body | null;
     const bottom = body?.bottom ?? this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDisplaySize(w, h);
+    // displaySize 由来の正規スケールを juice の基準として記録する。
+    this.playerBaseScaleX = this.player.scaleX;
+    this.playerBaseScaleY = this.player.scaleY;
     body?.setSize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     body?.updateFromGameObject();
     this.setPlayerBodyBottom(bottom);
