@@ -52,6 +52,7 @@ import {
   PLAYER_DEATH_BOUNCE_VY,
   PLAYER_DEATH_FALL_MS,
   TEX_KEY,
+  BG_BASE_COLOR,
   TILE_SIZE,
   USE_HARD_RELOAD_FALLBACK,
   INSTRUCTION_TEXT,
@@ -113,6 +114,8 @@ export class GameScene extends Phaser.Scene {
 
   private camera!: CameraController;
   private hud!: HudManager;
+  private bgOverlay!: Phaser.GameObjects.Image;
+  private playerJuice?: Phaser.Tweens.Tween;
   private particles!: ParticleManager;
   private touch!: TouchController;
   private playerController!: PlayerController;
@@ -187,11 +190,20 @@ export class GameScene extends Phaser.Scene {
     this.pulseCores = built.pulseCores;
     this.chronoCrystals = built.chronoCrystals;
 
+    // 遠景ベース（フラットな基調色。タイルの隙間や端を埋めて奥行きの土台にする）
+    this.cameras.main.setBackgroundColor(BG_BASE_COLOR);
+
     // 背景タイル（ワークショップ夜景。パラックス視差 0.15 で遠景感を出す）
     this.add.tileSprite(0, 0, worldWidth * 2, worldHeight * 2, TEX_KEY.bgTile)
       .setOrigin(0, 0)
       .setScrollFactor(0.15)
       .setDepth(-10);
+
+    // 明暗オーバーレイ（非タイル・画面固定）。ビネット + 暖色グローで世界観を付与（relayout で画面に合わせる）。
+    this.bgOverlay = this.add.image(0, 0, TEX_KEY.bgOverlay)
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(-9);
 
     this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.playerSheet, 'idle');
     this.player.setCollideWorldBounds(false);
@@ -259,16 +271,24 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.playerController = new PlayerController(this.player, {
-      onJump: () => this.audio.playSe('jump'),
+      onJump: () => {
+        this.audio.playSe('jump');
+        this.squashStretch(0.78, 1.24, 120); // 跳ね出しに縦伸び
+      },
       onLand: (_fallVelocity, x, y) => {
         this.audio.playSe('land');
         this.particles.dust(x, y);
+        this.squashStretch(1.26, 0.74, 130);  // 着地につぶれ
       }
     });
 
     const relayout = () => {
       this.camera.applyZoom();
       this.hud.layout();
+      // オーバーレイを画面中央へ固定し、ズーム込みでビューポート全体を覆う。
+      const zoom = this.cameras.main.zoom || 1;
+      this.bgOverlay.setPosition(this.scale.width / 2, this.scale.height / 2);
+      this.bgOverlay.setDisplaySize(this.scale.width / zoom + 4, this.scale.height / zoom + 4);
     };
     relayout();
     this.scale.on(Phaser.Scale.Events.RESIZE, relayout);
@@ -782,7 +802,27 @@ export class GameScene extends Phaser.Scene {
     }
   };
 
+  /**
+   * スクワッシュ&ストレッチ（juice）。yoyo で必ず元のスケールに戻すため、
+   * displaySize（=スケール）に依存する状態管理や E2E（displayHeight 検証）を壊さない。
+   */
+  private squashStretch(scaleXFactor: number, scaleYFactor: number, durationMs: number): void {
+    this.playerJuice?.stop();
+    const baseX = this.player.scaleX;
+    const baseY = this.player.scaleY;
+    this.player.setScale(baseX, baseY);
+    this.playerJuice = this.tweens.add({
+      targets: this.player,
+      scaleX: baseX * scaleXFactor,
+      scaleY: baseY * scaleYFactor,
+      duration: durationMs,
+      yoyo: true,
+      ease: 'Quad.easeOut'
+    });
+  }
+
   private applyPlayerState(newState: PlayerState): void {
+    this.playerJuice?.stop(); // スケール juice を止めてから displaySize を確定させる
     this.playerState = newState;
     const isBig = newState === 'big' || newState === 'fire';
     const w = isBig ? PLAYER_SPRITE_W * BIG_SCALE : PLAYER_SPRITE_W;

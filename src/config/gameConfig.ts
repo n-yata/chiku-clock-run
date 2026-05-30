@@ -18,6 +18,8 @@ export const BEACON_SPRITE_H = 64;
 export const FALL_THRESHOLD_Y = 800;
 
 export const BG_COLOR = '#0f0c18';
+// 背景の遠景ベース（タイルの隙間/端を埋める基調色。タイルより一段暗く奥行きを出す）。
+export const BG_BASE_COLOR = '#0e1a2e';
 
 export const PLAYER_COLOR = 0x1e3060;      // ネイビーブルーの帽子
 export const PLAYER_SCARF_COLOR = 0xcc2020; // 鮮やかな赤いスカーフ（個性）
@@ -28,6 +30,7 @@ export const PLAYER_VEST_COLOR = 0x345f46;
 export const PLAYER_BRASS_COLOR = 0xc9973a;
 export const PLAYER_GOGGLE_LENS_COLOR = 0x8ed4d8;
 export const PLAYER_SHOE_COLOR    = 0x6b4226;
+export const PLAYER_COAT_COLOR    = 0x1a3a50; // ダークティールのコート
 export const GROUND_COLOR = 0x8b4513;
 export const BEACON_COLOR = 0x42c5bb;
 
@@ -46,7 +49,9 @@ export const TEX_KEY = {
   /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
   particle: 'particle_dot',
   /** ゲーム背景タイル（ワークショップの夜景シルエット）。 */
-  bgTile: 'bg_tile'
+  bgTile: 'bg_tile',
+  /** 背景の明暗・ビネット・暖色グローを重ねる非タイルのオーバーレイ。 */
+  bgOverlay: 'bg_overlay'
 } as const;
 
 export const ANIM_KEY = {
@@ -94,6 +99,20 @@ export const HUD_STROKE_THICKNESS = 5;
 export const HUD_GEAR_LABEL = '歯車片';
 export const HUD_GEAR_X = 16;
 export const HUD_GEAR_Y = 40;
+
+// --- UIリッチ化: HUD パネル（リッチ化スプリント）---
+// 行を重ねず半透明角丸パネルに載せ、setResolution でズーム下でも鮮明化する。
+export const HUD_PANEL_X = 14;          // パネル左上（スクリーン座標）
+export const HUD_PANEL_Y = 12;
+export const HUD_PANEL_PADDING = 12;     // パネル内余白
+export const HUD_LINE_GAP = 30;          // 行間（24px フォントが重ならない高さ）
+export const HUD_PANEL_COLOR = 0x10243a; // 沈んだ紺
+export const HUD_PANEL_ALPHA = 0.58;
+export const HUD_PANEL_RADIUS = 12;
+export const HUD_PANEL_BORDER_COLOR = 0xc9973a; // 真鍮の縁
+export const HUD_PANEL_BORDER_ALPHA = 0.85;
+export const HUD_ICON_SIZE = 22;         // 歯車アイコンの一辺（スクリーン px）
+export const HUD_TEXT_LEFT = 28;         // アイコン分のテキスト左インデント
 
 // --- v0.3: BGM / SE ---
 
@@ -359,13 +378,13 @@ export const PARTICLE_DOT_SIZE = 6;
 /** 歯車片取得バースト: 数・寿命(ms)・速度・色。 */
 export const PARTICLE_GEAR = { count: 10, lifespanMs: 380, speedMin: 60, speedMax: 160, tint: 0xc9973a, scale: 0.9 } as const;
 /** 敵消滅バースト。 */
-export const PARTICLE_ENEMY = { count: 12, lifespanMs: 420, speedMin: 80, speedMax: 200, tint: 0x5ecabc, scale: 1.0 } as const;
+export const PARTICLE_ENEMY = { count: 18, lifespanMs: 460, speedMin: 110, speedMax: 260, tint: 0x5ecabc, scale: 1.2 } as const;
 /** 着地土煙。 */
 export const PARTICLE_DUST = { count: 7, lifespanMs: 300, speedMin: 30, speedMax: 90, tint: 0xead9b0, scale: 0.8 } as const;
 /** パルス弾衝突バースト。 */
 export const PARTICLE_PULSE = { count: 8, lifespanMs: 300, speedMin: 70, speedMax: 170, tint: 0x40dce5, scale: 0.8 } as const;
 /** クリア星バースト。 */
-export const PARTICLE_CELEBRATE = { count: 24, lifespanMs: 900, speedMin: 120, speedMax: 320, tint: 0xffe066, scale: 1.2 } as const;
+export const PARTICLE_CELEBRATE = { count: 36, lifespanMs: 1000, speedMin: 150, speedMax: 380, tint: 0xffe066, scale: 1.35 } as const;
 
 // --- UI 集約: フォント・文言・スタイル ---
 /** UI 全体の標準フォントファミリ。 */

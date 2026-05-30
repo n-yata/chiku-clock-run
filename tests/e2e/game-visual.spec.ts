@@ -25,7 +25,9 @@ type Rgb = {
 
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
-const BACKGROUND: Rgb = { r: 15, g: 12, b: 24 };  // BG_COLOR '#0f0c18'
+// UIリッチ化スプリント P2 で背景を時計工房パレットへ刷新（BG_BASE_COLOR + シームレスタイル + ビネット）。
+// 中央サンプル領域の実測色に更新（旧 BG_COLOR '#0f0c18' から変更）。
+const BACKGROUND: Rgb = { r: 37, g: 47, b: 60 };
 const PLAYER_SHOE: Rgb = { r: 107, g: 66, b: 38 };
 
 test('supports landscape via CSS rotation on portrait devices without legacy API usage', async () => {
