@@ -18,7 +18,8 @@ export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
 
 export const BG_COLOR = '#0f0c18';
 
-export const PLAYER_COLOR = 0x2f5d50;
+export const PLAYER_COLOR = 0x1e3060;      // ネイビーブルーの帽子
+export const PLAYER_SCARF_COLOR = 0xcc2020; // 鮮やかな赤いスカーフ（個性）
 export const PLAYER_SKIN_COLOR    = 0xffd6a8;
 export const PLAYER_OVERALL_COLOR = 0x345f46;
 export const PLAYER_SHIRT_COLOR = 0xf4f1e8;

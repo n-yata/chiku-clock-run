@@ -5,25 +5,16 @@ import { GameScene } from './scenes/GameScene';
 import { BG_COLOR, GRAVITY_Y } from './config/gameConfig';
 
 // 縦持ち時に CSS 回転（body.is-portrait）で横画面プレイを可能にする（design §5.2）。
-// Phaser は getBoundingClientRect() でコンテナを測定するが、CSS transform がかかった要素では
-// 回転後のビジュアル座標が返るため RESIZE モードでは正しいキャンバス寸法を取得できない。
-// そのため Phaser.Scale.NONE を使い、常に window.inner* から寸法を明示的に渡す。
+// Phaser.Scale.RESIZE を使うことで devicePixelRatio が自動処理され、テキスト・スプライトが
+// 高解像度ディスプレイでも鮮明に描画される。
+// portrait 時に Phaser が getBoundingClientRect() で誤ったサイズを読むため、
+// game.scale.on(RESIZE) を監視して正しいランドスケープ寸法に上書きする。
 const mq = window.matchMedia('(orientation: portrait)');
-
-const getGameSize = (): { w: number; h: number } => mq.matches
-  ? { w: window.innerHeight, h: window.innerWidth }
-  : { w: window.innerWidth, h: window.innerHeight };
-
-// CSS クラスを Phaser 起動前に適用し、初回キャンバス寸法と CSS 状態を一致させる。
 document.body.classList.toggle('is-portrait', mq.matches);
-
-const { w: initW, h: initH } = getGameSize();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: initW,
-  height: initH,
   pixelArt: true,
   backgroundColor: BG_COLOR,
   physics: {
@@ -34,7 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   scale: {
-    mode: Phaser.Scale.NONE,
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.NO_CENTER
   },
   scene: [BootScene, TitleScene, GameScene]
@@ -42,15 +33,33 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
-const resizeGame = () => {
-  const { w, h } = getGameSize();
-  game.scale.resize(w, h);
+const getLandscapeSize = (): { w: number; h: number } => mq.matches
+  ? { w: window.innerHeight, h: window.innerWidth }
+  : { w: window.innerWidth, h: window.innerHeight };
+
+// portrait 時 Phaser の自動リサイズを正しいランドスケープ寸法で上書きする。
+// correcting フラグで再帰ループを防ぐ。
+let correcting = false;
+const syncSize = (): void => {
+  if (correcting) return;
+  const { w, h } = getLandscapeSize();
+  const gs = game.scale.gameSize;
+  if (Math.abs(gs.width - w) > 2 || Math.abs(gs.height - h) > 2) {
+    correcting = true;
+    game.scale.resize(w, h);
+    correcting = false;
+  }
 };
 
-const applyOrientation = () => {
+game.events.once('ready', () => {
+  syncSize();
+  game.scale.on(Phaser.Scale.Events.RESIZE, syncSize);
+});
+
+const applyOrientation = (): void => {
   document.body.classList.toggle('is-portrait', mq.matches);
-  requestAnimationFrame(resizeGame);
+  requestAnimationFrame(syncSize);
 };
 
 mq.addEventListener('change', applyOrientation);
-window.addEventListener('resize', () => requestAnimationFrame(resizeGame));
+window.addEventListener('resize', () => requestAnimationFrame(syncSize));

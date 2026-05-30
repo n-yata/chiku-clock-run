@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import {
   TEX_KEY,
   PLAYER_COLOR, PLAYER_SKIN_COLOR, PLAYER_SHIRT_COLOR, PLAYER_VEST_COLOR,
-  PLAYER_BRASS_COLOR, PLAYER_GOGGLE_LENS_COLOR, PLAYER_SHOE_COLOR,
+  PLAYER_BRASS_COLOR, PLAYER_GOGGLE_LENS_COLOR, PLAYER_SHOE_COLOR, PLAYER_SCARF_COLOR,
   ENEMY_COLOR, ENEMY_DARK_COLOR, ENEMY_ACCENT_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
   ENEMY_SPRITE_W, ENEMY_SPRITE_H,
@@ -17,7 +17,7 @@ import {
   PARTICLE_DOT_SIZE
 } from '../config/gameConfig';
 
-type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'walk3' | 'jump';
+type PlayerFrame = 'idle' | 'idle_b' | 'walk1' | 'walk2' | 'walk3' | 'jump';
 type EnemyFrame  = 'enemy_walk1' | 'enemy_walk2' | 'enemy_walk3';
 
 function toHex(color: number): string {
@@ -47,7 +47,7 @@ export function buildPlayerSheet(scene: Phaser.Scene): void {
   if (!tmpCtx) throw new Error('canvas 2d context unavailable');
   tmpCtx.imageSmoothingEnabled = false;
 
-  const frames: PlayerFrame[] = ['idle', 'walk1', 'walk2', 'walk3', 'jump'];
+  const frames: PlayerFrame[] = ['idle', 'idle_b', 'walk1', 'walk2', 'walk3', 'jump'];
   canvas.width = frameW * frames.length;
   frames.forEach((frame, i) => {
     tmpCtx.clearRect(0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H);
@@ -331,88 +331,84 @@ export function buildEnemySheet(scene: Phaser.Scene): void {
 }
 
 function drawChikuFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
-  // ---- 胴体 ----
-  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
-  ctx.fillRect(ox + 5, 21, 22, 11);
-
-  ctx.fillStyle = toHex(PLAYER_VEST_COLOR);
-  ctx.fillRect(ox + 8, 21, 16, 13);
-  ctx.fillRect(ox + 6, 24, 4, 8);
-  ctx.fillRect(ox + 22, 24, 4, 8);
-
-  // ブラスボタン
-  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 14, 24, 2, 2);
-  ctx.fillRect(ox + 18, 24, 2, 2);
-  ctx.fillRect(ox + 15, 29, 4, 2);
-
-  // 胸の歯車バッジ
-  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 15, 32, 2, 2);
-  ctx.fillRect(ox + 14, 33, 4, 1);
-  ctx.fillRect(ox + 16, 32, 1, 4);
+  // idle_b は1px 下にボディをずらして呼吸感を出す
+  const bs = (frame === 'idle_b') ? 1 : 0; // body shift
 
   // ---- 帽子 ----
-  ctx.fillStyle = toHex(PLAYER_COLOR);
+  ctx.fillStyle = toHex(PLAYER_COLOR); // ネイビー
   ctx.fillRect(ox + 7, 4, 18, 5);
   ctx.fillRect(ox + 5, 8, 22, 3);
-  // 帽子バンド（アクセント）
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 7, 8, 18, 1);
+  ctx.fillRect(ox + 7, 8, 18, 1); // 帽子バンド
 
   // ---- 顔 ----
   ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
   ctx.fillRect(ox + 8, 11, 16, 10);
 
-  // ゴーグルフレーム（ブラス、大型化）
+  // ゴーグルストラップ + フレーム
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
   ctx.fillRect(ox + 7, 10, 18, 3);  // ストラップ
-  ctx.fillRect(ox + 9, 11, 7, 6);   // 左フレーム（7×6）
-  ctx.fillRect(ox + 16, 11, 7, 6);  // 右フレーム（7×6）
+  ctx.fillRect(ox + 9, 11, 7, 6);   // 左フレーム
+  ctx.fillRect(ox + 16, 11, 7, 6);  // 右フレーム
 
-  // ゴーグルレンズ（5×4、より大きく）
+  // ゴーグルレンズ（5×4）
   ctx.fillStyle = toHex(PLAYER_GOGGLE_LENS_COLOR);
-  ctx.fillRect(ox + 10, 12, 5, 4);  // 左レンズ
-  ctx.fillRect(ox + 17, 12, 5, 4);  // 右レンズ
-
-  // レンズグレア（リッチ感）
+  ctx.fillRect(ox + 10, 12, 5, 4);
+  ctx.fillRect(ox + 17, 12, 5, 4);
+  // レンズグレア
   ctx.fillStyle = toHex(0xeef8ff);
-  ctx.fillRect(ox + 10, 12, 2, 1);  // 左グレア
-  ctx.fillRect(ox + 17, 12, 2, 1);  // 右グレア
+  ctx.fillRect(ox + 10, 12, 2, 1);
+  ctx.fillRect(ox + 17, 12, 2, 1);
 
   // 口
   ctx.fillStyle = toHex(0x2b2118);
   ctx.fillRect(ox + 16, 18, 5, 2);
 
+  // ---- スカーフ（個性・愛着の核心）----
+  ctx.fillStyle = toHex(PLAYER_SCARF_COLOR);
+  ctx.fillRect(ox + 7, 19 + bs, 18, 4);  // 首巻き部分
+  ctx.fillRect(ox + 22, 21 + bs, 5, 8);  // 右に垂れるスカーフ
+
+  // ---- 胴体（bs で呼吸) ----
+  ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
+  ctx.fillRect(ox + 5, 22 + bs, 22, 10);
+  ctx.fillStyle = toHex(PLAYER_VEST_COLOR);
+  ctx.fillRect(ox + 8, 22 + bs, 16, 12);
+  ctx.fillRect(ox + 6, 25 + bs, 4, 7);
+  ctx.fillRect(ox + 22, 25 + bs, 4, 7);
+  // ボタン
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 14, 25 + bs, 2, 2);
+  ctx.fillRect(ox + 18, 25 + bs, 2, 2);
+  ctx.fillRect(ox + 15, 30 + bs, 4, 2);
+
   // ---- フレーム別: 足・手 ----
-  if (frame === 'idle') {
+  if (frame === 'idle' || frame === 'idle_b') {
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 10, 37, 6, 11);
-    ctx.fillRect(ox + 16, 37, 6, 11);
-    drawChikuHands(ctx, ox, 27, 27);
+    ctx.fillRect(ox + 10, 37 + bs, 6, 11 - bs);
+    ctx.fillRect(ox + 16, 37 + bs, 6, 11 - bs);
+    drawChikuHands(ctx, ox, 27 + bs, 27 + bs);
   } else if (frame === 'walk1') {
-    // 左足前・右足後ろ
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 7, 36, 7, 12); // 左足（前、低め）
-    ctx.fillRect(ox + 18, 39, 7, 9); // 右足（後、高め）
-    drawChikuHands(ctx, ox, 24, 30);  // より大きな腕振り
+    ctx.fillRect(ox + 7, 36, 7, 12);
+    ctx.fillRect(ox + 18, 39, 7, 9);
+    drawChikuHands(ctx, ox, 23, 31);
   } else if (frame === 'walk3') {
-    // 中間フレーム（両足まとまった位置）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 9, 38, 6, 10);
     ctx.fillRect(ox + 17, 38, 6, 10);
     drawChikuHands(ctx, ox, 27, 27);
   } else if (frame === 'walk2') {
-    // 右足前・左足後ろ（walk1 の逆）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 7, 39, 7, 9);  // 左足（後、高め）
-    ctx.fillRect(ox + 18, 36, 7, 12);// 右足（前、低め）
-    drawChikuHands(ctx, ox, 30, 24);  // より大きな腕振り
+    ctx.fillRect(ox + 7, 39, 7, 9);
+    ctx.fillRect(ox + 18, 36, 7, 12);
+    drawChikuHands(ctx, ox, 31, 23);
   } else if (frame === 'jump') {
+    // よりダイナミックなジャンプポーズ（足を後ろに引く）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 9, 35, 6, 13);
-    ctx.fillRect(ox + 17, 35, 6, 13);
-    drawChikuHands(ctx, ox, 19, 19);
+    ctx.fillRect(ox + 8, 34, 6, 9);
+    ctx.fillRect(ox + 16, 36, 7, 12);
+    drawChikuHands(ctx, ox, 17, 14); // 両腕を上げる
   }
 }
 
@@ -436,7 +432,7 @@ function drawPlayerSoleSeal(ctx: CanvasRenderingContext2D, frameX: number, frame
   const soleH = PLAYER_SPRITE_H - soleY;
   const sourceRects = frame === 'jump'
     ? [{ x: 9, w: 14 }]
-    : frame === 'idle'
+    : (frame === 'idle' || frame === 'idle_b')
       ? [{ x: 10, w: 12 }]
       : [{ x: 8, w: 16 }];
 

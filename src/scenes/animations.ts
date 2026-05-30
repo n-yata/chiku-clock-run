@@ -6,8 +6,11 @@ export function registerAnimations(scene: Phaser.Scene): void {
 
   scene.anims.create({
     key: ANIM_KEY.playerIdle,
-    frames: [{ key: TEX_KEY.playerSheet, frame: 'idle' }],
-    frameRate: 1,
+    frames: [
+      { key: TEX_KEY.playerSheet, frame: 'idle' },
+      { key: TEX_KEY.playerSheet, frame: 'idle_b' },
+    ],
+    frameRate: 3,
     repeat: -1
   });
   scene.anims.create({

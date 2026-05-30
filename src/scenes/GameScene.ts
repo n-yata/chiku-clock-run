@@ -63,12 +63,6 @@ import {
   GAME_OVER_STROKE_THICKNESS,
   PROMPT_NEXT_TEXT,
   PROMPT_TITLE_TEXT,
-  SHAKE_LAND_MS,
-  SHAKE_LAND_INTENSITY,
-  SHAKE_STOMP_MS,
-  SHAKE_STOMP_INTENSITY,
-  SHAKE_GOAL_MS,
-  SHAKE_GOAL_INTENSITY,
   HITSTOP_MS,
   type PlayerState
 } from '../config/gameConfig';
@@ -269,7 +263,6 @@ export class GameScene extends Phaser.Scene {
       onLand: (_fallVelocity, x, y) => {
         this.audio.playSe('land');
         this.particles.dust(x, y);
-        this.camera.shake(SHAKE_LAND_MS, SHAKE_LAND_INTENSITY);
       }
     });
 
@@ -636,7 +629,6 @@ export class GameScene extends Phaser.Scene {
       this.enemyManager.kill(eSprite);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');
-      this.camera.shake(SHAKE_STOMP_MS, SHAKE_STOMP_INTENSITY);
       this.applyHitstop();
       return;
     }
@@ -703,7 +695,6 @@ export class GameScene extends Phaser.Scene {
     this.audio.stopBgm(BGM_FADE_OUT_MS);
     this.player.setVelocity(0, 0);
     this.playerController.setControlEnabled(false);
-    this.camera.shake(SHAKE_GOAL_MS, SHAKE_GOAL_INTENSITY);
     this.particles.celebrate(this.player.x, this.player.y);
     this.events.emit(GameEvents.Goal, { x: this.player.x, y: this.player.y });
 
