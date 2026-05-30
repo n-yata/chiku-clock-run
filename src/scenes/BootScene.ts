@@ -11,7 +11,8 @@ import {
   buildPulseCoreSheet,
   buildChronoCrystalSheet,
   buildPulseBoltSheet,
-  buildParticleTexture
+  buildParticleTexture,
+  buildBackgroundTile
 } from './spriteSheets';
 import { STAGES } from '../stages/index';
 
@@ -49,6 +50,7 @@ export class BootScene extends Phaser.Scene {
     buildChronoCrystalSheet(this);
     buildPulseBoltSheet(this);
     buildParticleTexture(this);
+    buildBackgroundTile(this);
 
     let stageIndex = 0;
     let hasStoredIndex = false;

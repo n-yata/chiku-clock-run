@@ -193,6 +193,12 @@ export class GameScene extends Phaser.Scene {
     this.pulseCores = built.pulseCores;
     this.chronoCrystals = built.chronoCrystals;
 
+    // 背景タイル（ワークショップ夜景。パラックス視差 0.15 で遠景感を出す）
+    this.add.tileSprite(0, 0, worldWidth * 2, worldHeight * 2, TEX_KEY.bgTile)
+      .setOrigin(0, 0)
+      .setScrollFactor(0.15)
+      .setDepth(-10);
+
     this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.playerSheet, 'idle');
     this.player.setCollideWorldBounds(false);
 

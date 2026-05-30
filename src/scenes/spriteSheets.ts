@@ -215,6 +215,81 @@ export function buildPulseBoltSheet(scene: Phaser.Scene): void {
   }
 }
 
+/** ゲーム背景タイル: 暗いワークショップの内壁 + ギアシルエット。 */
+export function buildBackgroundTile(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.bgTile)) return;
+  const W = 320, H = 180;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 暗い石壁のグラデーション
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a081a');
+  grad.addColorStop(1, '#140c08');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 石積みの横目地
+  ctx.fillStyle = 'rgba(255,255,255,0.025)';
+  for (let y = 24; y < H; y += 24) {
+    ctx.fillRect(0, y, W, 1);
+  }
+  // 縦目地（互い違い）
+  for (let row = 0; row < H / 24; row++) {
+    const offset = (row % 2) * 40;
+    for (let x = offset; x < W; x += 80) {
+      ctx.fillRect(x, row * 24, 1, 24);
+    }
+  }
+
+  // ギアシルエット（遠景）
+  drawBgGear(ctx, 55,  80, 38, 10, 'rgba(18,12,36,0.9)');
+  drawBgGear(ctx, 225, 48, 24,  8, 'rgba(16,10,30,0.85)');
+  drawBgGear(ctx, 285, 148, 20, 8, 'rgba(14,10,26,0.85)');
+
+  // パイプ（縦）
+  ctx.fillStyle = 'rgba(35,20,55,0.7)';
+  ctx.fillRect(130, 0, 7, H);
+  ctx.fillStyle = 'rgba(60,35,90,0.4)';
+  ctx.fillRect(131, 0, 2, H);
+
+  // ランプの環境光グロー
+  bgGlow(ctx, 38, 28, 55, 38);
+  bgGlow(ctx, 268, 88, 42, 32);
+
+  if (!scene.textures.addCanvas(TEX_KEY.bgTile, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.bgTile}`);
+  }
+}
+
+function drawBgGear(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, teeth: number, color: string): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const a = (i / (teeth * 2)) * Math.PI * 2;
+    const rad = i % 2 === 0 ? r * 1.22 : r;
+    if (i === 0) ctx.moveTo(cx + rad * Math.cos(a), cy + rad * Math.sin(a));
+    else ctx.lineTo(cx + rad * Math.cos(a), cy + rad * Math.sin(a));
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#0a081a';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function bgGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rw: number, rh: number): void {
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rw, rh));
+  g.addColorStop(0, 'rgba(200,130,20,0.18)');
+  g.addColorStop(1, 'rgba(200,130,20,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(cx - rw, cy - rh, rw * 2, rh * 2);
+}
+
 export function buildParticleTexture(scene: Phaser.Scene): void {
   if (scene.textures.exists(TEX_KEY.particle)) return;
   const size = PARTICLE_DOT_SIZE;

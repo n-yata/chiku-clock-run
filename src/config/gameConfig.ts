@@ -16,7 +16,7 @@ export const BEACON_SPRITE_H = 64;
 
 export const FALL_THRESHOLD_Y = VIEWPORT_HEIGHT + 200;
 
-export const BG_COLOR = '#5c94fc';
+export const BG_COLOR = '#0f0c18';
 
 export const PLAYER_COLOR = 0x2f5d50;
 export const PLAYER_SKIN_COLOR    = 0xffd6a8;
@@ -42,7 +42,9 @@ export const TEX_KEY = {
   chronoCrystal: 'chrono_crystal',
   pulseBolt: 'pulse_bolt',
   /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
-  particle: 'particle_dot'
+  particle: 'particle_dot',
+  /** ゲーム背景タイル（ワークショップの夜景シルエット）。 */
+  bgTile: 'bg_tile'
 } as const;
 
 export const ANIM_KEY = {

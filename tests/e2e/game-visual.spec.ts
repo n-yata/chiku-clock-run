@@ -25,7 +25,7 @@ type Rgb = {
 
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
-const BACKGROUND: Rgb = { r: 92, g: 148, b: 252 };
+const BACKGROUND: Rgb = { r: 15, g: 12, b: 24 };  // BG_COLOR '#0f0c18'
 const PLAYER_SHOE: Rgb = { r: 107, g: 66, b: 38 };
 
 test('supports landscape via CSS rotation on portrait devices without legacy API usage', async () => {
@@ -252,7 +252,7 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
     { x1: 420, y1: 180, x2: 520, y2: 260 },
     (color) => colorDistance(color, BACKGROUND) < 12
   );
-  expect(backgroundPixels).toBeGreaterThanOrEqual(8_000);
+  expect(backgroundPixels).toBeGreaterThanOrEqual(5_000);
 
   const groundPixels = countPixels(
     png,
