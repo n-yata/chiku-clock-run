@@ -281,6 +281,31 @@ GameScene の肥大化を防ぐため、責務は `src/game/` 配下のプレー
 
 画面に常時表示する HUD テキスト（歯車片取得数・操作説明）は `setScrollFactor(0)` を呼ぶ。これを忘れるとカメラスクロールに追従してテキストが画面外に出る。クリア表示テキストも同様。
 
+#### カメラズーム下の HUD テキストは setResolution + setScale で鮮明・等倍化する
+
+メインカメラに `setZoom()` を掛けると、`setScrollFactor(0)` の HUD テキストもズーム倍率で拡大され、フォントテクスチャを引き伸ばすためボヤける。専用 UI カメラは ParticleManager 等の遅延生成オブジェクトの `ignore` 管理が複雑化するため、単一カメラのまま次の 2 つで対処する:
+
+- `text.setResolution(zoom * devicePixelRatio)` — 内部レンダリング解像度をズームに合わせて鮮明化する
+- `text.setScale(1 / zoom)` — スクリーン実寸をフォント px に固定する（ズームに依存しない一定サイズ）
+
+位置はスクリーン座標→ワールド座標の逆ズーム変換 `(sx - (1 - zoom) * 半幅) / zoom` で求める。中央メッセージ・プロンプトも同様に鮮明化する。
+
+#### 背景タイルはシームレス + 非タイルのオーバーレイに分離する
+
+`tileSprite` で敷く背景は両軸でタイルされるため、明暗グラデーションをタイル自体に焼くと境界に必ず継ぎ目が出る。次のように分離する:
+
+- **タイル**: 平坦な基調色 + モチーフを上下左右の 8 近傍へ複製描画（`tileWrap`）してシームレス化。目地の周期はタイル寸法を割り切る値にする
+- **オーバーレイ**: ビネット・暖色グロー等の明暗演出は画面固定（`setScrollFactor(0)`）の非タイル 1 枚画像として重ね、`relayout` でビューポート実寸にフィットさせる
+- **遠景**: 隙間を埋める基調色は `cameras.main.setBackgroundColor()` で敷く
+
+#### スプライトの squash & stretch は yoyo で原スケールへ復帰させる
+
+スクワッシュ&ストレッチ（ジャンプ伸び・着地つぶれ）は `scaleX/scaleY` の tween で表現するが、プレイヤーのサイズ状態は `setDisplaySize()`（= スケール）で管理し、E2E も `displayHeight` を検証する。juice の tween は必ず `yoyo: true` で原スケールへ戻し、状態変更（`setDisplaySize` 呼び出し）の直前に `tween.stop()` する。これで displaySize 依存の状態管理・E2E 契約を壊さずに演出を足せる。
+
+#### WebGL 描画の目視確認は canvas.screenshot() を使う
+
+Phaser（`Phaser.AUTO` = WebGL）の描画は、Playwright の `page.screenshot()`（ページ合成）では黒く抜けることがある。`canvas` 要素を直接撮る `locator('canvas').screenshot()` を使うこと。シーンの起動は `window.__capturedGame` 経由で `scene.start('GameScene', ...)` を呼ぶ（`tests/e2e/game-visual.spec.ts` の `installGameCapture` 参照）。
+
 ### インフラ / CI/CD
 
 #### GitHub Pages の base パスは VITE_BASE_PATH 環境変数で解決
