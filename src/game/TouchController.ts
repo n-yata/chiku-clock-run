@@ -3,12 +3,6 @@ import {
   DOUBLE_TAP_MS,
   TOUCH_ZONE_SPLIT_RATIO,
   TOUCH_SLIDE_THRESHOLD_PX_V2,
-  TOUCH_BUTTON_RADIUS,
-  TOUCH_BUTTON_MARGIN_X,
-  TOUCH_BUTTON_MARGIN_Y,
-  TOUCH_BUTTON_BASE_ALPHA,
-  TOUCH_BUTTON_FEEDBACK_ALPHA,
-  TOUCH_BUTTON_COLOR,
   type PlayerState
 } from '../config/gameConfig';
 
@@ -39,18 +33,14 @@ export class TouchController {
   private lastTapRightAt = 0;
   private advanceTapRequested = false;
 
-  private jumpButton: Phaser.GameObjects.Arc | null = null;
-
   constructor(private readonly scene: Phaser.Scene, private readonly host: TouchHost) {}
 
-  /** ポインタ購読を開始し、仮想ジャンプボタンを生成する。 */
+  /** ポインタ購読を開始する。 */
   start(): void {
     this.scene.input.on('pointerdown', this.handlePointerDown, this);
     this.scene.input.on('pointermove', this.handlePointerMove, this);
     this.scene.input.on('pointerup', this.handlePointerUp, this);
     this.scene.input.on('pointerupoutside', this.handlePointerUp, this);
-    this.scene.scale.on(Phaser.Scale.Events.RESIZE, this.positionButton, this);
-    this.createButton();
   }
 
   /** 左移動入力。 */
@@ -87,41 +77,6 @@ export class TouchController {
     this.scene.input.off('pointermove', this.handlePointerMove, this);
     this.scene.input.off('pointerup', this.handlePointerUp, this);
     this.scene.input.off('pointerupoutside', this.handlePointerUp, this);
-    this.scene.scale.off(Phaser.Scale.Events.RESIZE, this.positionButton, this);
-    this.jumpButton?.destroy();
-    this.jumpButton = null;
-  }
-
-  private createButton(): void {
-    this.jumpButton = this.scene.add
-      .circle(0, 0, TOUCH_BUTTON_RADIUS, TOUCH_BUTTON_COLOR, TOUCH_BUTTON_BASE_ALPHA)
-      .setScrollFactor(0)
-      .setDepth(40);
-    this.positionButton();
-  }
-
-  private positionButton(): void {
-    if (!this.jumpButton) return;
-    // 画面はカメラズームの影響を受けるため、HUD と同じく world 座標へ変換して右下に配置。
-    const cam = this.scene.cameras.main;
-    const zoom = cam.zoom;
-    const w = this.scene.scale.width;
-    const h = this.scene.scale.height;
-    const hw = w / 2;
-    const hh = h / 2;
-    const sx = w - TOUCH_BUTTON_MARGIN_X;
-    const sy = h - TOUCH_BUTTON_MARGIN_Y;
-    const worldX = (sx - (1 - zoom) * hw) / zoom;
-    const worldY = (sy - (1 - zoom) * hh) / zoom;
-    this.jumpButton.setPosition(worldX, worldY);
-    this.jumpButton.setScale(1 / zoom);
-  }
-
-  private setButtonPressed(pressed: boolean): void {
-    this.jumpButton?.setFillStyle(
-      TOUCH_BUTTON_COLOR,
-      pressed ? TOUCH_BUTTON_FEEDBACK_ALPHA : TOUCH_BUTTON_BASE_ALPHA
-    );
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -155,7 +110,6 @@ export class TouchController {
       if (this.jumpPointerId === null) {
         this.jumpPointerId = pointer.id;
         this.jumpRequested = true;
-        this.setButtonPressed(true);
       }
     }
   }
@@ -181,7 +135,6 @@ export class TouchController {
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
     if (pointer.id === this.jumpPointerId) {
       this.jumpPointerId = null;
-      this.setButtonPressed(false);
     }
     if (pointer.id === this.movePointerId) {
       this.movePointerId = null;
