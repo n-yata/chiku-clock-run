@@ -17,8 +17,8 @@ import {
   PARTICLE_DOT_SIZE
 } from '../config/gameConfig';
 
-type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'jump';
-type EnemyFrame  = 'enemy_walk1' | 'enemy_walk2';
+type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'walk3' | 'jump';
+type EnemyFrame  = 'enemy_walk1' | 'enemy_walk2' | 'enemy_walk3';
 
 function toHex(color: number): string {
   return '#' + color.toString(16).padStart(6, '0');
@@ -47,7 +47,8 @@ export function buildPlayerSheet(scene: Phaser.Scene): void {
   if (!tmpCtx) throw new Error('canvas 2d context unavailable');
   tmpCtx.imageSmoothingEnabled = false;
 
-  const frames: PlayerFrame[] = ['idle', 'walk1', 'walk2', 'jump'];
+  const frames: PlayerFrame[] = ['idle', 'walk1', 'walk2', 'walk3', 'jump'];
+  canvas.width = frameW * frames.length;
   frames.forEach((frame, i) => {
     tmpCtx.clearRect(0, 0, PLAYER_DRAW_W, PLAYER_DRAW_H);
     drawPlayerFrame(tmpCtx, 0, frame);
@@ -320,7 +321,8 @@ export function buildEnemySheet(scene: Phaser.Scene): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2d context unavailable');
 
-  const frames: EnemyFrame[] = ['enemy_walk1', 'enemy_walk2'];
+  const frames: EnemyFrame[] = ['enemy_walk1', 'enemy_walk2', 'enemy_walk3'];
+  canvas.width = frameW * frames.length;
   frames.forEach((frame, i) => drawEnemyFrame(ctx, i * frameW, frame));
 
   const tex = scene.textures.addCanvas(TEX_KEY.enemySheet, canvas);
@@ -329,6 +331,7 @@ export function buildEnemySheet(scene: Phaser.Scene): void {
 }
 
 function drawChikuFrame(ctx: CanvasRenderingContext2D, ox: number, frame: PlayerFrame): void {
+  // ---- 胴体 ----
   ctx.fillStyle = toHex(PLAYER_SHIRT_COLOR);
   ctx.fillRect(ox + 5, 21, 22, 11);
 
@@ -337,46 +340,74 @@ function drawChikuFrame(ctx: CanvasRenderingContext2D, ox: number, frame: Player
   ctx.fillRect(ox + 6, 24, 4, 8);
   ctx.fillRect(ox + 22, 24, 4, 8);
 
+  // ブラスボタン
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
   ctx.fillRect(ox + 14, 24, 2, 2);
   ctx.fillRect(ox + 18, 24, 2, 2);
   ctx.fillRect(ox + 15, 29, 4, 2);
 
+  // 胸の歯車バッジ
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 15, 32, 2, 2);
+  ctx.fillRect(ox + 14, 33, 4, 1);
+  ctx.fillRect(ox + 16, 32, 1, 4);
+
+  // ---- 帽子 ----
   ctx.fillStyle = toHex(PLAYER_COLOR);
   ctx.fillRect(ox + 7, 4, 18, 5);
   ctx.fillRect(ox + 5, 8, 22, 3);
-  ctx.fillRect(ox + 22, 10, 6, 2);
+  // 帽子バンド（アクセント）
+  ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
+  ctx.fillRect(ox + 7, 8, 18, 1);
 
+  // ---- 顔 ----
   ctx.fillStyle = toHex(PLAYER_SKIN_COLOR);
   ctx.fillRect(ox + 8, 11, 16, 10);
 
+  // ゴーグルフレーム（ブラス、大型化）
   ctx.fillStyle = toHex(PLAYER_BRASS_COLOR);
-  ctx.fillRect(ox + 7, 10, 18, 3);
-  ctx.fillRect(ox + 10, 12, 6, 5);
-  ctx.fillRect(ox + 17, 12, 6, 5);
+  ctx.fillRect(ox + 7, 10, 18, 3);  // ストラップ
+  ctx.fillRect(ox + 9, 11, 7, 6);   // 左フレーム（7×6）
+  ctx.fillRect(ox + 16, 11, 7, 6);  // 右フレーム（7×6）
 
+  // ゴーグルレンズ（5×4、より大きく）
   ctx.fillStyle = toHex(PLAYER_GOGGLE_LENS_COLOR);
-  ctx.fillRect(ox + 11, 13, 4, 3);
-  ctx.fillRect(ox + 18, 13, 4, 3);
+  ctx.fillRect(ox + 10, 12, 5, 4);  // 左レンズ
+  ctx.fillRect(ox + 17, 12, 5, 4);  // 右レンズ
 
+  // レンズグレア（リッチ感）
+  ctx.fillStyle = toHex(0xeef8ff);
+  ctx.fillRect(ox + 10, 12, 2, 1);  // 左グレア
+  ctx.fillRect(ox + 17, 12, 2, 1);  // 右グレア
+
+  // 口
   ctx.fillStyle = toHex(0x2b2118);
   ctx.fillRect(ox + 16, 18, 5, 2);
 
+  // ---- フレーム別: 足・手 ----
   if (frame === 'idle') {
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 10, 37, 6, 11);
     ctx.fillRect(ox + 16, 37, 6, 11);
     drawChikuHands(ctx, ox, 27, 27);
   } else if (frame === 'walk1') {
+    // 左足前・右足後ろ
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 8, 37, 6, 11);
-    ctx.fillRect(ox + 18, 39, 6, 9);
-    drawChikuHands(ctx, ox, 25, 29);
+    ctx.fillRect(ox + 7, 36, 7, 12); // 左足（前、低め）
+    ctx.fillRect(ox + 18, 39, 7, 9); // 右足（後、高め）
+    drawChikuHands(ctx, ox, 24, 30);  // より大きな腕振り
+  } else if (frame === 'walk3') {
+    // 中間フレーム（両足まとまった位置）
+    ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
+    ctx.fillRect(ox + 9, 38, 6, 10);
+    ctx.fillRect(ox + 17, 38, 6, 10);
+    drawChikuHands(ctx, ox, 27, 27);
   } else if (frame === 'walk2') {
+    // 右足前・左足後ろ（walk1 の逆）
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
-    ctx.fillRect(ox + 8, 39, 6, 9);
-    ctx.fillRect(ox + 18, 37, 6, 11);
-    drawChikuHands(ctx, ox, 29, 25);
+    ctx.fillRect(ox + 7, 39, 7, 9);  // 左足（後、高め）
+    ctx.fillRect(ox + 18, 36, 7, 12);// 右足（前、低め）
+    drawChikuHands(ctx, ox, 30, 24);  // より大きな腕振り
   } else if (frame === 'jump') {
     ctx.fillStyle = toHex(PLAYER_SHOE_COLOR);
     ctx.fillRect(ox + 9, 35, 6, 13);
@@ -421,37 +452,81 @@ function drawPlayerSoleSeal(ctx: CanvasRenderingContext2D, frameX: number, frame
 }
 
 function drawEnemyFrame(ctx: CanvasRenderingContext2D, ox: number, frame: EnemyFrame): void {
-  // Winding key and square clockwork casing.
+  // ---- ぜんまいキー（頭頂部）----
   ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
-  ctx.fillRect(ox + 20, 4, 4, 8);
-  ctx.fillRect(ox + 11, 2, 22, 3);
-  ctx.fillRect(ox + 11, 2, 3, 7);
-  ctx.fillRect(ox + 30, 2, 3, 7);
-  ctx.fillRect(ox + 4, 12, 36, 22);
+  ctx.fillRect(ox + 19, 2, 6, 10);   // キー軸
+  ctx.fillRect(ox + 11, 0, 22, 3);   // 横棒
+  ctx.fillRect(ox + 11, 0, 3, 8);    // 左ポスト
+  ctx.fillRect(ox + 30, 0, 3, 8);    // 右ポスト
+
+  // ---- 本体（外装）----
+  ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
+  ctx.fillRect(ox + 3, 10, 38, 24);  // 外側ダークボックス
 
   ctx.fillStyle = toHex(ENEMY_COLOR);
-  ctx.fillRect(ox + 7, 14, 30, 17);
-  ctx.fillRect(ox + 15, 4, 14, 3);
+  ctx.fillRect(ox + 5, 12, 34, 20);  // 内側パネル
 
-  ctx.fillStyle = toHex(ENEMY_ACCENT_COLOR);
-  ctx.fillRect(ox + 10, 18, 5, 5);
-  ctx.fillRect(ox + 29, 18, 5, 5);
-  ctx.fillRect(ox + 17, 17, 10, 3);
-  ctx.fillRect(ox + 20, 20, 4, 7);
-  ctx.fillRect(ox + 17, 24, 3, 3);
-
+  // パネルのボルト（四隅）
   ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
-  ctx.fillRect(ox + 7, 31, 30, 3);
+  ctx.fillRect(ox + 6, 13, 3, 3);    // 左上ボルト
+  ctx.fillRect(ox + 35, 13, 3, 3);   // 右上ボルト
+  ctx.fillRect(ox + 6, 27, 3, 3);    // 左下ボルト
+  ctx.fillRect(ox + 35, 27, 3, 3);   // 右下ボルト
+
+  // ---- 発光する大きな目（最重要）----
+  ctx.fillStyle = toHex(0x00ccbb);   // 明るいティール
+  ctx.fillRect(ox + 8, 15, 10, 7);   // 左目（10×7 大型）
+  ctx.fillRect(ox + 26, 15, 10, 7);  // 右目（10×7 大型）
+
+  // 目のグロー（光っている感）
+  ctx.fillStyle = toHex(0xbbffee);
+  ctx.fillRect(ox + 8, 15, 5, 2);    // 左グレア
+  ctx.fillRect(ox + 26, 15, 5, 2);   // 右グレア
+
+  // 瞳（暗い円形）
+  ctx.fillStyle = toHex(0x002a28);
+  ctx.fillRect(ox + 14, 18, 3, 3);   // 左瞳
+  ctx.fillRect(ox + 32, 18, 3, 3);   // 右瞳
+
+  // ---- 口（スピーカーグリル）----
+  ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
+  ctx.fillRect(ox + 14, 23, 16, 3);  // グリル横棒
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(ox + 16 + i * 4, 24, 2, 1); // グリル縦スリット
+  }
+
+  // ---- 胸の歯車エンブレム ----
+  ctx.fillStyle = toHex(ENEMY_ACCENT_COLOR);
+  ctx.fillRect(ox + 18, 27, 8, 5);   // 歯車本体
+  ctx.fillRect(ox + 15, 29, 14, 2);  // 水平
+  ctx.fillRect(ox + 21, 25, 2, 9);   // 垂直
+  ctx.fillStyle = toHex(ENEMY_COLOR);
+  ctx.fillRect(ox + 20, 28, 4, 3);   // 中央穴
+
+  // 仕切り線
+  ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
+  ctx.fillRect(ox + 5, 33, 34, 2);
+
+  // ---- 脚（フレームで大きく変化させる）----
   ctx.fillStyle = toHex(ENEMY_DARK_COLOR);
   if (frame === 'enemy_walk1') {
-    ctx.fillRect(ox + 6, 34, 11, 7);
-    ctx.fillRect(ox + 27, 35, 11, 6);
-    ctx.fillRect(ox + 4, 40, 14, 2);
-    ctx.fillRect(ox + 26, 40, 14, 2);
-  } else if (frame === 'enemy_walk2') {
-    ctx.fillRect(ox + 6, 35, 11, 6);
-    ctx.fillRect(ox + 27, 34, 11, 7);
-    ctx.fillRect(ox + 4, 40, 14, 2);
-    ctx.fillRect(ox + 26, 40, 14, 2);
+    // 左足降下（重心）、右足挙上
+    ctx.fillRect(ox + 6, 35, 13, 9);   // 左脚: 長い（支持）
+    ctx.fillRect(ox + 25, 35, 13, 4);  // 右脚: 短い（挙上）
+    ctx.fillRect(ox + 3, 44, 16, 0);   // ← 高さ 0 は省略（sprite height=44）
+    ctx.fillRect(ox + 4, 42, 15, 2);   // 左足裏（地面接地）
+    ctx.fillRect(ox + 25, 38, 14, 2);  // 右足裏（宙）
+  } else if (frame === 'enemy_walk3') {
+    // 右足降下（重心）、左足挙上（walk1 の逆）
+    ctx.fillRect(ox + 6, 35, 13, 4);   // 左脚: 短い（挙上）
+    ctx.fillRect(ox + 25, 35, 13, 9);  // 右脚: 長い（支持）
+    ctx.fillRect(ox + 4, 38, 14, 2);   // 左足裏（宙）
+    ctx.fillRect(ox + 25, 42, 15, 2);  // 右足裏（地面接地）
+  } else {
+    // enemy_walk2: 中間フレーム（両脚等高）
+    ctx.fillRect(ox + 6, 35, 13, 6);   // 両脚中高
+    ctx.fillRect(ox + 25, 35, 13, 6);
+    ctx.fillRect(ox + 4, 40, 15, 2);   // 両足裏（揃い）
+    ctx.fillRect(ox + 25, 40, 15, 2);
   }
 }

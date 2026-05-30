@@ -14,7 +14,9 @@ export function registerAnimations(scene: Phaser.Scene): void {
     key: ANIM_KEY.playerWalk,
     frames: [
       { key: TEX_KEY.playerSheet, frame: 'walk1' },
-      { key: TEX_KEY.playerSheet, frame: 'walk2' }
+      { key: TEX_KEY.playerSheet, frame: 'walk3' },
+      { key: TEX_KEY.playerSheet, frame: 'walk2' },
+      { key: TEX_KEY.playerSheet, frame: 'walk3' },
     ],
     frameRate: PLAYER_ANIM_WALK_FPS,
     repeat: -1
@@ -29,7 +31,9 @@ export function registerAnimations(scene: Phaser.Scene): void {
     key: ANIM_KEY.winderWalk,
     frames: [
       { key: TEX_KEY.enemySheet, frame: 'enemy_walk1' },
-      { key: TEX_KEY.enemySheet, frame: 'enemy_walk2' }
+      { key: TEX_KEY.enemySheet, frame: 'enemy_walk2' },
+      { key: TEX_KEY.enemySheet, frame: 'enemy_walk3' },
+      { key: TEX_KEY.enemySheet, frame: 'enemy_walk2' },
     ],
     frameRate: ENEMY_ANIM_WALK_FPS,
     repeat: -1

@@ -54,8 +54,8 @@ export const ANIM_KEY = {
   winderWalk: 'winder_walk'
 } as const;
 
-export const PLAYER_ANIM_WALK_FPS = 8;
-export const ENEMY_ANIM_WALK_FPS = 6;
+export const PLAYER_ANIM_WALK_FPS = 12;
+export const ENEMY_ANIM_WALK_FPS = 9;
 
 export const CAMERA_LERP_X = 0.1;
 export const CAMERA_LERP_Y = 0.1;
@@ -85,10 +85,10 @@ export const MISS_FLASH_MS = 150;
 export const MISS_FLASH_COLOR = 0xffffff;
 
 // --- v0.2: HUD ---
-export const HUD_FONT_SIZE = '18px';
+export const HUD_FONT_SIZE = '24px';
 export const HUD_FONT_COLOR = '#ffffff';
 export const HUD_STROKE_COLOR = '#000000';
-export const HUD_STROKE_THICKNESS = 4;
+export const HUD_STROKE_THICKNESS = 5;
 export const HUD_GEAR_LABEL = '歯車片';
 export const HUD_GEAR_X = 16;
 export const HUD_GEAR_Y = 40;
@@ -371,7 +371,7 @@ export const UI_FONT_FAMILY = 'system-ui, sans-serif';
 /** 操作説明（通常時）。 */
 export const INSTRUCTION_TEXT = 'PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ';
 /** 操作説明のフォントサイズ・色。 */
-export const INSTRUCTION_FONT_SIZE = '16px';
+export const INSTRUCTION_FONT_SIZE = '20px';
 export const INSTRUCTION_FONT_COLOR = '#ffffff';
 /** 操作説明を表示してからフェードアウト開始までの時間 (ms)。 */
 export const INSTRUCTION_HOLD_MS = 4000;
