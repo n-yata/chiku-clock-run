@@ -4,14 +4,10 @@ import {
   ANIM_KEY,
   BGM_FADE_OUT_MS,
   BIG_SCALE,
-  CAMERA_LERP_X,
-  CAMERA_LERP_Y,
   GEAR_BIT_SPRITE_H,
   GEAR_BIT_SPRITE_W,
-  DOUBLE_TAP_MS,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
-  ENEMY_SPRITE_W,
   FALL_THRESHOLD_Y,
   PULSE_BOLT_BODY_H,
   PULSE_BOLT_BODY_W,
@@ -30,25 +26,8 @@ import {
   GAME_OVER_TO_TITLE_DELAY_MS,
   BEACON_SPRITE_H,
   BEACON_SPRITE_W,
-  HUD_GEAR_LABEL,
-  HUD_GEAR_X,
-  HUD_GEAR_Y,
   HUD_PULSE_LABEL,
-  HUD_FONT_COLOR,
-  HUD_FONT_SIZE,
-  HUD_INSTRUCTION_Y,
-  HUD_LIFE_HEART,
-  HUD_LIFE_LABEL,
-  HUD_LIFE_X,
-  HUD_LIFE_Y,
-  HUD_STAGE_LABEL,
-  HUD_STAGE_Y,
-  HUD_STROKE_COLOR,
-  HUD_STROKE_THICKNESS,
   INITIAL_LIVES,
-  INVINCIBLE_BLINK_MS,
-  INVINCIBLE_MS,
-  JUMP_VELOCITY,
   MAX_LIVES,
   MIN_LIVES,
   MISS_FLASH_COLOR,
@@ -56,7 +35,6 @@ import {
   SPRING_COIL_SPRITE_H,
   SPRING_COIL_SPRITE_W,
   PLAYER_FIRE_TINT,
-  PLAYER_SPEED,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
   STAGE_CLEAR_DELAY_MS,
@@ -68,28 +46,44 @@ import {
   STAGE_SPRING_COIL_MIN,
   STAGE_CHRONO_CRYSTAL_MAX,
   STAGE_CHRONO_CRYSTAL_MIN,
-  CHRONO_BLINK_MS,
-  CHRONO_END_WARNING_MS,
-  CHRONO_INVINCIBLE_MS,
   CHRONO_CRYSTAL_SPRITE_H,
   CHRONO_CRYSTAL_SPRITE_W,
   STOMP_BOUNCE_VELOCITY,
   PLAYER_DEATH_BOUNCE_VY,
   PLAYER_DEATH_FALL_MS,
-  ENEMY_DEATH_FALL_DISTANCE,
-  ENEMY_DEATH_FALL_MS,
   TEX_KEY,
   TILE_SIZE,
-  TOUCH_SLIDE_THRESHOLD_PX,
-  TOUCH_ZONE_SPLIT_RATIO,
   USE_HARD_RELOAD_FALLBACK,
-  VIEWPORT_HEIGHT,
-  VIEWPORT_WIDTH,
+  INSTRUCTION_TEXT,
+  STAGE_CLEAR_COLOR,
+  ALL_CLEAR_COLOR,
+  ALL_CLEAR_SUFFIX,
+  GAME_OVER_FONT_SIZE,
+  GAME_OVER_COLOR,
+  GAME_OVER_STROKE_THICKNESS,
+  PROMPT_NEXT_TEXT,
+  PROMPT_TITLE_TEXT,
+  SHAKE_LAND_MS,
+  SHAKE_LAND_INTENSITY,
+  SHAKE_STOMP_MS,
+  SHAKE_STOMP_INTENSITY,
+  SHAKE_GOAL_MS,
+  SHAKE_GOAL_INTENSITY,
+  HITSTOP_MS,
   type PlayerState
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
 import { getStage, nextStageIndex, STAGES, type StageDefinition } from '../stages/index';
 import { registerAnimations } from './animations';
+import { CameraController } from '../game/CameraController';
+import { HudManager } from '../game/HudManager';
+import { ParticleManager } from '../game/ParticleManager';
+import { TouchController, type TouchHost } from '../game/TouchController';
+import { PlayerController, type InputState } from '../game/PlayerController';
+import { EnemyManager } from '../game/EnemyManager';
+import { PowerUpManager } from '../game/PowerUpManager';
+import { CollisionHandler } from '../game/CollisionHandler';
+import { GameEvents, type PointPayload } from '../game/events';
 
 interface BuiltStage {
   ground: Phaser.Physics.Arcade.StaticGroup;
@@ -115,22 +109,19 @@ export class GameScene extends Phaser.Scene {
   private spawnY = 0;
   private isCleared = false;
   private isMissed = false;
-  private touchLeft = false;
-  private touchRight = false;
-  private touchJumpRequested = false;
-  private jumpPointerId: number | null = null;
-  private movePointerId: number | null = null;
-  private touchMoveBaseX: number | null = null;
 
   private enemies!: Phaser.Physics.Arcade.Group;
   private gearBits!: Phaser.Physics.Arcade.StaticGroup;
   private gearBitTotal = 0;
   private gearBitsCollected = 0;
-  private gearHud!: Phaser.GameObjects.Text;
-  private stageHud!: Phaser.GameObjects.Text;
-  private instructionText!: Phaser.GameObjects.Text;
   private groundMask: ReadonlyArray<ReadonlyArray<boolean>> = [];
   private audio!: AudioManager;
+
+  private camera!: CameraController;
+  private hud!: HudManager;
+  private particles!: ParticleManager;
+  private touch!: TouchController;
+  private playerController!: PlayerController;
 
   private stageIndex = 0;
   private stage!: StageDefinition;
@@ -139,22 +130,18 @@ export class GameScene extends Phaser.Scene {
   private lives = INITIAL_LIVES;
   private playerState: PlayerState = 'small';
   private springCoils!: Phaser.Physics.Arcade.StaticGroup;
-  private lifeHud!: Phaser.GameObjects.Text;
-  private invincibleTimer: Phaser.Time.TimerEvent | null = null;
-  private blinkTween: Phaser.Tweens.Tween | null = null;
 
   private playerGroundCollider: Phaser.Physics.Arcade.Collider | null = null;
-  private isInvincible = false;
-  private isChronoShielded = false;
-  private chronoTimer: Phaser.Time.TimerEvent | null = null;
-  private chronoWarningTimer: Phaser.Time.TimerEvent | null = null;
-  private chronoBlinkTween: Phaser.Tweens.Tween | null = null;
+  private enemyManager!: EnemyManager;
+  private powerUps!: PowerUpManager;
+  private collisions!: CollisionHandler;
   private pulseCores!: Phaser.Physics.Arcade.StaticGroup;
   private chronoCrystals!: Phaser.Physics.Arcade.StaticGroup;
   private pulseBolts!: Phaser.Physics.Arcade.Group;
   private fireKey!: Phaser.Input.Keyboard.Key;
   private fireCooldownUntil = 0;
-  private lastTapRightAt = 0;
+  /** クリア / ゲームオーバー時の自動遷移を、タップ/キーで前倒しするためのワンショット。 */
+  private pendingAdvance: (() => void) | null = null;
 
   constructor() {
     super('GameScene');
@@ -171,27 +158,23 @@ export class GameScene extends Phaser.Scene {
       ? incoming : 'small';
   }
 
+  // --- E2E / 内部参照向けファサード（実体は PowerUpManager, D-004）---
+  private get isInvincible(): boolean {
+    return this.powerUps?.isInvincible ?? false;
+  }
+
+  get isChronoShielded(): boolean {
+    return this.powerUps?.isChronoShielded ?? false;
+  }
+
   create(): void {
     this.isCleared = false;
     this.isMissed = false;
     this.isAllCleared = false;
-    this.touchLeft = false;
-    this.touchRight = false;
-    this.touchJumpRequested = false;
-    this.jumpPointerId = null;
-    this.movePointerId = null;
-    this.touchMoveBaseX = null;
     this.gearBitsCollected = 0;
-    this.invincibleTimer = null;
-    this.blinkTween = null;
     this.playerGroundCollider = null;
-    this.isInvincible = false;
-    this.isChronoShielded = false;
     this.fireCooldownUntil = 0;
-    this.lastTapRightAt = 0;
-    this.chronoTimer = null;
-    this.chronoWarningTimer = null;
-    this.chronoBlinkTween = null;
+    this.pendingAdvance = null;
 
     const stage = this.stage;
     const worldWidth = stage.cols * TILE_SIZE;
@@ -220,19 +203,38 @@ export class GameScene extends Phaser.Scene {
       allowGravity: true,
     });
 
-    this.playerGroundCollider = this.physics.add.collider(this.player, built.ground);
-    this.physics.add.collider(this.enemies, built.ground);
+    this.enemyManager = new EnemyManager(this, this.enemies, this.groundMask);
+    this.powerUps = new PowerUpManager(
+      this,
+      this.player,
+      this.groundMask,
+      () => this.applyPlayerState(this.playerState)
+    );
 
-    // overlap 登録順は二重保証 (design.md §3.4.3 Q5):
-    // ゴールを先に登録し、onEnemyOverlap 冒頭の isCleared ガードと併用する。
-    this.physics.add.overlap(this.player, built.goal, this.onGoalHit, undefined, this);
-    this.physics.add.overlap(this.player, this.enemies, this.onEnemyOverlap, undefined, this);
-    this.physics.add.overlap(this.player, this.gearBits, this.onGearBitOverlap, undefined, this);
-    this.physics.add.overlap(this.player, this.springCoils, this.onSpringCoilOverlap, undefined, this);
-    this.physics.add.overlap(this.player, built.pulseCores, this.onPulseCoreOverlap, undefined, this);
-    this.physics.add.overlap(this.player, built.chronoCrystals, this.onChronoCrystalOverlap, undefined, this);
-    this.physics.add.collider(this.pulseBolts, built.ground, this.onPulseBoltGroundCollide, undefined, this);
-    this.physics.add.overlap(this.pulseBolts, this.enemies, this.onPulseBoltEnemyOverlap, undefined, this);
+    this.collisions = new CollisionHandler(this, this);
+    this.playerGroundCollider = this.collisions.register(
+      {
+        player: this.player,
+        ground: built.ground,
+        goal: built.goal,
+        enemies: this.enemies,
+        gearBits: this.gearBits,
+        springCoils: this.springCoils,
+        pulseCores: this.pulseCores,
+        chronoCrystals: this.chronoCrystals,
+        pulseBolts: this.pulseBolts
+      },
+      {
+        onGoalHit: this.onGoalHit,
+        onEnemyOverlap: this.onEnemyOverlap,
+        onGearBitOverlap: this.onGearBitOverlap,
+        onSpringCoilOverlap: this.onSpringCoilOverlap,
+        onPulseCoreOverlap: this.onPulseCoreOverlap,
+        onChronoCrystalOverlap: this.onChronoCrystalOverlap,
+        onPulseBoltGroundCollide: this.onPulseBoltGroundCollide,
+        onPulseBoltEnemyOverlap: this.onPulseBoltEnemyOverlap
+      }
+    );
 
     if (!this.input.keyboard) {
       throw new Error('Keyboard input plugin is not available');
@@ -241,81 +243,56 @@ export class GameScene extends Phaser.Scene {
     this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this.fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
 
-    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-    this.cameras.main.startFollow(this.player, true, CAMERA_LERP_X, CAMERA_LERP_Y);
+    this.camera = new CameraController(this, this.player, { w: worldWidth, h: worldHeight });
+    this.camera.start();
 
-    this.instructionText = this.add
-      .text(
-        0,
-        0,
-        'PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ',
-        {
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '16px',
-          color: '#ffffff'
-        }
-      )
-      .setScrollFactor(0);
+    this.hud = new HudManager(this);
+    this.hud.build();
+    this.hud.setGear(this.gearBitsCollected, this.gearBitTotal);
+    this.hud.setStage(this.stageIndex, STAGES.length);
+    this.hud.setLives(this.lives);
 
-    this.gearHud = this.add
-      .text(0, 0, this.formatGearHud(), {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: HUD_FONT_SIZE,
-        color: HUD_FONT_COLOR,
-        stroke: HUD_STROKE_COLOR,
-        strokeThickness: HUD_STROKE_THICKNESS
-      })
-      .setScrollFactor(0);
+    this.particles = new ParticleManager(this);
+    // 敵撃破（踏み / クロノ接触 / パルス弾）で消滅バーストを出す。
+    this.events.on(GameEvents.EnemyKilled, (p: PointPayload) => {
+      this.particles.burstEnemy(p.x, p.y);
+    });
 
-    this.stageHud = this.add
-      .text(0, 0, this.formatStageHud(), {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: HUD_FONT_SIZE,
-        color: HUD_FONT_COLOR,
-        stroke: HUD_STROKE_COLOR,
-        strokeThickness: HUD_STROKE_THICKNESS
-      })
-      .setScrollFactor(0);
+    this.playerController = new PlayerController(this.player, {
+      onJump: () => this.audio.playSe('jump'),
+      onLand: (_fallVelocity, x, y) => {
+        this.audio.playSe('land');
+        this.particles.dust(x, y);
+        this.camera.shake(SHAKE_LAND_MS, SHAKE_LAND_INTENSITY);
+      }
+    });
 
-    this.lifeHud = this.add
-      .text(0, 0, this.formatLifeHud(), {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: HUD_FONT_SIZE,
-        color: HUD_FONT_COLOR,
-        stroke: HUD_STROKE_COLOR,
-        strokeThickness: HUD_STROKE_THICKNESS
-      })
-      .setScrollFactor(0);
-
-    const updateAll = () => {
-      const zoom = Math.min(
-        this.scale.width / VIEWPORT_WIDTH,
-        this.scale.height / VIEWPORT_HEIGHT
-      );
-      this.cameras.main.setZoom(zoom);
-      this.updateHudPositions();
+    const relayout = () => {
+      this.camera.applyZoom();
+      this.hud.layout();
     };
-    updateAll();
-    this.scale.on(Phaser.Scale.Events.RESIZE, updateAll);
+    relayout();
+    this.scale.on(Phaser.Scale.Events.RESIZE, relayout);
 
     this.input.addPointer(2);
-    this.setupTouchControls();
+    const self = this;
+    const touchHost: TouchHost = {
+      get isMissed() { return self.isMissed; },
+      get isCleared() { return self.isCleared; },
+      get playerState() { return self.playerState; },
+      unlockAudio: () => self.audio.unlock(),
+      shootPulseBolt: () => self.tryShootPulseBolt()
+    };
+    this.touch = new TouchController(this, touchHost);
+    this.touch.start();
 
     this.audio = new AudioManager();
     this.input.keyboard!.once('keydown', () => { this.audio.unlock(); });
     this.audio.startBgm();
     this.events.once('shutdown', () => {
       this.audio.destroy();
-      this.invincibleTimer?.remove(false);
-      this.invincibleTimer = null;
-      this.blinkTween?.stop();
-      this.blinkTween = null;
-      this.chronoTimer?.remove(false);
-      this.chronoTimer = null;
-      this.chronoWarningTimer?.remove(false);
-      this.chronoWarningTimer = null;
-      this.chronoBlinkTween?.stop();
-      this.chronoBlinkTween = null;
+      this.touch.destroy();
+      this.powerUps.destroy();
     });
 
     registerAnimations(this);
@@ -323,7 +300,7 @@ export class GameScene extends Phaser.Scene {
 
     this.applyPlayerState(this.playerState);
 
-    this.cameras.main.fadeIn(STAGE_FADE_MS);
+    this.camera.fadeIn(STAGE_FADE_MS);
   }
 
   update(): void {
@@ -338,43 +315,30 @@ export class GameScene extends Phaser.Scene {
 
     if (this.isCleared || this.isMissed) {
       this.player.setVelocityX(0);
+      if (this.pendingAdvance) {
+        const keyAdvance =
+          (this.cursors.space ? Phaser.Input.Keyboard.JustDown(this.cursors.space) : false) ||
+          (this.cursors.up ? Phaser.Input.Keyboard.JustDown(this.cursors.up) : false);
+        if (keyAdvance || this.touch.consumeAdvanceTap()) {
+          this.firePendingAdvance();
+        }
+      }
       return;
     }
 
-    const onGround = this.player.body?.blocked.down ?? false;
-
-    const leftDown = (this.cursors.left?.isDown ?? false) || this.touchLeft;
-    const rightDown = (this.cursors.right?.isDown ?? false) || this.touchRight;
-    const keyJumpDown =
-      (this.cursors.space?.isDown ?? false) || (this.cursors.up?.isDown ?? false);
-
-    if (leftDown) {
-      this.player.setVelocityX(-PLAYER_SPEED);
-    } else if (rightDown) {
-      this.player.setVelocityX(PLAYER_SPEED);
-    } else {
-      this.player.setVelocityX(0);
-    }
-
-    if ((keyJumpDown || this.touchJumpRequested) && onGround) {
-      this.player.setVelocityY(JUMP_VELOCITY);
-      this.audio.playSe('jump');
-    }
-    this.touchJumpRequested = false;
-
-    // アニメーション状態遷移
-    if (!onGround) {
-      this.player.anims.play(ANIM_KEY.playerJump, true);
-    } else if (Math.abs(this.player.body!.velocity.x) > 0.1) {
-      this.player.anims.play(ANIM_KEY.playerWalk, true);
-    } else {
-      this.player.anims.play(ANIM_KEY.playerIdle, true);
-    }
-
-    // 向き反転
-    const vx = this.player.body!.velocity.x;
-    if (vx < -0.1) this.player.setFlipX(true);
-    else if (vx > 0.1) this.player.setFlipX(false);
+    const input: InputState = {
+      left: (this.cursors.left?.isDown ?? false) || this.touch.isLeft,
+      right: (this.cursors.right?.isDown ?? false) || this.touch.isRight,
+      jumpHeld:
+        (this.cursors.space?.isDown ?? false) ||
+        (this.cursors.up?.isDown ?? false) ||
+        this.touch.isJumpHeld,
+      jumpJustPressed:
+        (this.cursors.space ? Phaser.Input.Keyboard.JustDown(this.cursors.space) : false) ||
+        (this.cursors.up ? Phaser.Input.Keyboard.JustDown(this.cursors.up) : false) ||
+        this.touch.consumeJump()
+    };
+    this.playerController.update(this.time.now, input);
 
     // Z キーでパルス弾を投射
     if (Phaser.Input.Keyboard.JustDown(this.fireKey)) {
@@ -400,7 +364,9 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    this.updateEnemyAi();
+    this.enemyManager.update();
+
+    this.camera.update();
 
     if (this.player.y > FALL_THRESHOLD_Y) {
       this.handleMiss('fall');
@@ -635,49 +601,14 @@ export class GameScene extends Phaser.Scene {
     return group;
   }
 
-  private updateEnemyAi(): void {
-    this.enemies.children.iterate((child) => {
-      const enemy = child as Phaser.Physics.Arcade.Sprite;
-      if (!enemy.active) return true;
-      const body = enemy.body as Phaser.Physics.Arcade.Body | null;
-      if (!body) return true;
-
-      let dir = (enemy.getData('dir') as EnemyDir | undefined) ?? -1;
-
-      if (dir < 0 && body.blocked.left) dir = 1;
-      else if (dir > 0 && body.blocked.right) dir = -1;
-
-      // 段差端で反転: 進行方向の足元タイル (前方ピクセル + 1) が地面でなければ反転。
-      // 着地中のみ判定する (空中で前方タイルが空でも落下中は反転しない)。
-      if (body.blocked.down) {
-        const probeX = enemy.x + dir * (ENEMY_SPRITE_W / 2 + 1);
-        const probeY = enemy.y + ENEMY_SPRITE_H / 2 + 1;
-        const probeCol = Math.floor(probeX / TILE_SIZE);
-        const probeRow = Math.floor(probeY / TILE_SIZE);
-        const inBounds =
-          probeRow >= 0 &&
-          probeRow < this.groundMask.length &&
-          probeCol >= 0 &&
-          probeCol < (this.groundMask[probeRow]?.length ?? 0);
-        if (inBounds && !this.groundMask[probeRow][probeCol]) {
-          dir = (dir === 1 ? -1 : 1) as EnemyDir;
-        }
-      }
-
-      enemy.setData('dir', dir);
-      // 速度を毎フレーム強制し、衝突後の速度ゼロ化事故を防ぐ
-      enemy.setVelocityX(dir * ENEMY_SPEED);
-      enemy.setFlipX(dir > 0);
-      return true;
-    });
-  }
-
   private onGearBitOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, gearBit) => {
     if (this.isCleared || this.isMissed) return;
-    (gearBit as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
+    const sprite = gearBit as Phaser.Physics.Arcade.Sprite;
+    this.particles.burstGear(sprite.x, sprite.y);
+    sprite.disableBody(true, true);
     this.gearBitsCollected++;
     this.audio.playSe('gearBit');
-    this.refreshGearHud();
+    this.hud.setGear(this.gearBitsCollected, this.gearBitTotal);
   };
 
   private onEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, enemy) => {
@@ -689,16 +620,18 @@ export class GameScene extends Phaser.Scene {
     const eBody = eSprite.body as Phaser.Physics.Arcade.Body;
 
     if (this.isChronoShielded) {
-      this.killEnemyWithAnimation(eSprite);
+      this.enemyManager.kill(eSprite);
       this.audio.playSe('stomp');
       return;
     }
 
     const isStomp = pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
     if (isStomp) {
-      this.killEnemyWithAnimation(eSprite);
+      this.enemyManager.kill(eSprite);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');
+      this.camera.shake(SHAKE_STOMP_MS, SHAKE_STOMP_INTENSITY);
+      this.applyHitstop();
       return;
     }
 
@@ -712,15 +645,15 @@ export class GameScene extends Phaser.Scene {
     if (reason === 'enemy') {
       if (this.playerState === 'fire') {
         this.applyPlayerState('big');
-        this.snapPlayerToNearbyGround();
-        this.startInvincible();
+        this.powerUps.snapToNearbyGround();
+        this.powerUps.startInvincible();
         this.audio.playSe('stomp');
         return;
       }
       if (this.playerState === 'big') {
         this.applyPlayerState('small');
-        this.snapPlayerToNearbyGround();
-        this.startInvincible();
+        this.powerUps.snapToNearbyGround();
+        this.powerUps.startInvincible();
         this.audio.playSe('stomp');
         return;
       }
@@ -763,6 +696,10 @@ export class GameScene extends Phaser.Scene {
     this.audio.playSe('beacon');
     this.audio.stopBgm(BGM_FADE_OUT_MS);
     this.player.setVelocity(0, 0);
+    this.playerController.setControlEnabled(false);
+    this.camera.shake(SHAKE_GOAL_MS, SHAKE_GOAL_INTENSITY);
+    this.particles.celebrate(this.player.x, this.player.y);
+    this.events.emit(GameEvents.Goal, { x: this.player.x, y: this.player.y });
 
     const next = nextStageIndex(this.stageIndex);
     if (next === null) {
@@ -770,64 +707,39 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.showStageClear();
+    this.showStageClear(next);
+    this.time.delayedCall(STAGE_CLEAR_DELAY_MS, () => this.firePendingAdvance());
+  };
 
-    this.time.delayedCall(STAGE_CLEAR_DELAY_MS, () => {
+  private showStageClear(nextIndex: number): void {
+    this.hud.showCenterMessage(
+      `STAGE ${this.stageIndex + 1} CLEAR!\n${this.hud.formatGear()}`,
+      { color: STAGE_CLEAR_COLOR }
+    );
+    this.hud.showPrompt(PROMPT_NEXT_TEXT);
+    this.pendingAdvance = () => {
       this.cameras.main.fadeOut(STAGE_FADE_MS, 0, 0, 0);
-
       let transitioned = false;
       const doTransition = () => {
         if (transitioned) return;
         transitioned = true;
-        this.transitionToStage(next);
+        this.transitionToStage(nextIndex);
       };
-
       this.cameras.main.once('camerafadeoutcomplete', doTransition);
       // カメライベントが発火しない場合のセーフティタイマー
       this.time.delayedCall(STAGE_FADE_MS + 200, doTransition);
-    });
-  };
-
-  private showStageClear(): void {
-    this.add
-      .text(
-        this.scale.width / 2,
-        this.scale.height / 2,
-        `STAGE ${this.stageIndex + 1} CLEAR!\n${this.formatGearHud()}`,
-        {
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '44px',
-          color: '#ffffff',
-          stroke: '#000000',
-          strokeThickness: 6,
-          align: 'center'
-        }
-      )
-      .setOrigin(0.5)
-      .setScrollFactor(0);
+    };
   }
 
   private showAllClear(): void {
     this.isAllCleared = true;
-    this.add
-      .text(
-        this.scale.width / 2,
-        this.scale.height / 2,
-        `ALL CLEAR!\n${this.formatGearHud()}\nタイトルへ戻ります...`,
-        {
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '44px',
-          color: '#ffff00',
-          stroke: '#000000',
-          strokeThickness: 6,
-          align: 'center'
-        }
-      )
-      .setOrigin(0.5)
-      .setScrollFactor(0);
-    this.time.delayedCall(ALL_CLEAR_TO_TITLE_DELAY_MS, () => {
-      this.scene.start('TitleScene');
-    }, [], this);
+    this.hud.showCenterMessage(
+      `ALL CLEAR!\n${this.hud.formatGear()}\n${ALL_CLEAR_SUFFIX}`,
+      { color: ALL_CLEAR_COLOR }
+    );
+    this.hud.showPrompt(PROMPT_TITLE_TEXT);
+    this.pendingAdvance = () => this.restartFromTop();
+    this.time.delayedCall(ALL_CLEAR_TO_TITLE_DELAY_MS, () => this.firePendingAdvance(), [], this);
   }
 
   private teardownPhysics(): void {
@@ -864,30 +776,6 @@ export class GameScene extends Phaser.Scene {
     this.scene.start('TitleScene');
   }
 
-  private updateHudPositions(): void {
-    const zoom = this.cameras.main.zoom;
-    const hw = this.scale.width / 2;
-    const hh = this.scale.height / 2;
-    const toWorldX = (sx: number) => (sx - (1 - zoom) * hw) / zoom;
-    const toWorldY = (sy: number) => (sy - (1 - zoom) * hh) / zoom;
-    this.stageHud.setPosition(toWorldX(HUD_GEAR_X), toWorldY(HUD_STAGE_Y));         // y=16
-    this.gearHud.setPosition(toWorldX(HUD_GEAR_X), toWorldY(HUD_GEAR_Y));           // y=40
-    this.lifeHud.setPosition(toWorldX(HUD_LIFE_X), toWorldY(HUD_LIFE_Y));           // y=64
-    this.instructionText.setPosition(toWorldX(HUD_LIFE_X), toWorldY(HUD_INSTRUCTION_Y)); // y=88
-  }
-
-  private formatGearHud(): string {
-    return `${HUD_GEAR_LABEL}: ${this.gearBitsCollected} / ${this.gearBitTotal}`;
-  }
-
-  private refreshGearHud(): void {
-    this.gearHud.setText(this.formatGearHud());
-  }
-
-  private formatStageHud(): string {
-    return `${HUD_STAGE_LABEL}: ${this.stageIndex + 1} / ${STAGES.length}`;
-  }
-
   private onSpringCoilOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, springCoil) => {
     if (this.isCleared || this.isMissed) return;
     (springCoil as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
@@ -915,13 +803,7 @@ export class GameScene extends Phaser.Scene {
         this.player.clearTint();
       }
     }
-    if (this.instructionText) {
-      if (newState === 'fire') {
-        this.instructionText.setText(HUD_PULSE_LABEL);
-      } else {
-        this.instructionText.setText('PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ');
-      }
-    }
+    this.hud?.showInstruction(newState === 'fire' ? HUD_PULSE_LABEL : INSTRUCTION_TEXT);
   }
 
   private setPlayerBodyBottom(bottom: number): void {
@@ -932,37 +814,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.player.setY(bottom - this.player.displayHeight * (1 - this.player.originY));
-  }
-
-  private snapPlayerToNearbyGround(): void {
-    const groundTop = this.findNearbyGroundTopUnderPlayer();
-    if (groundTop === null) return;
-    this.setPlayerBodyBottom(groundTop);
-    this.player.setVelocityY(0);
-  }
-
-  private findNearbyGroundTopUnderPlayer(): number | null {
-    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
-    if (!body) return null;
-
-    const probeXs = [body.left + 1, body.center.x, body.right - 1];
-    let nearest: { top: number; distance: number } | null = null;
-
-    for (const x of probeXs) {
-      const col = Math.floor(x / TILE_SIZE);
-      if (col < 0) continue;
-      for (let row = 0; row < this.groundMask.length; row++) {
-        if (!this.groundMask[row]?.[col]) continue;
-        const top = row * TILE_SIZE;
-        const distance = body.bottom - top;
-        if (distance < -2 || distance > TILE_SIZE + 4) continue;
-        if (!nearest || distance < nearest.distance) {
-          nearest = { top, distance };
-        }
-      }
-    }
-
-    return nearest?.top ?? null;
   }
 
   private onPulseCoreOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_p, pulseCore) => {
@@ -976,46 +827,8 @@ export class GameScene extends Phaser.Scene {
     if (this.isCleared || this.isMissed) return;
     (chronoCrystal as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
     this.audio.playSe('chronoCrystal');
-    this.startChronoShield();
+    this.powerUps.startChronoShield();
   };
-
-  private startChronoShield(): void {
-    this.chronoTimer?.remove(false);
-    this.chronoWarningTimer?.remove(false);
-    this.chronoBlinkTween?.stop();
-    this.isChronoShielded = true;
-    this.chronoBlinkTween = this.tweens.add({
-      targets: this.player,
-      alpha: 0.6,
-      duration: CHRONO_BLINK_MS,
-      yoyo: true,
-      repeat: -1
-    });
-    this.chronoWarningTimer = this.time.delayedCall(
-      CHRONO_INVINCIBLE_MS - CHRONO_END_WARNING_MS,
-      () => {
-        this.chronoBlinkTween?.stop();
-        this.chronoBlinkTween = this.tweens.add({
-          targets: this.player,
-          alpha: 0.4,
-          duration: CHRONO_BLINK_MS / 2,
-          yoyo: true,
-          repeat: -1
-        });
-      }
-    );
-    this.chronoTimer = this.time.delayedCall(CHRONO_INVINCIBLE_MS, () => this.endChronoShield());
-  }
-
-  private endChronoShield(): void {
-    this.isChronoShielded = false;
-    this.chronoBlinkTween?.stop();
-    this.chronoBlinkTween = null;
-    this.chronoWarningTimer = null;
-    this.chronoTimer = null;
-    this.player.setAlpha(1);
-    this.applyPlayerState(this.playerState);
-  }
 
   private tryShootPulseBolt(): void {
     if (this.isCleared || this.isMissed) return;
@@ -1040,6 +853,15 @@ export class GameScene extends Phaser.Scene {
     fb.disableBody(true, true);
   }
 
+  /** 敵踏み時のヒットストップ。物理のみ一時停止し、描画/音には波及させない（design §11）。 */
+  private applyHitstop(): void {
+    if (this.physics.world.isPaused) return;
+    this.physics.world.pause();
+    this.time.delayedCall(HITSTOP_MS, () => {
+      this.physics.world.resume();
+    });
+  }
+
   private onPulseBoltGroundCollide: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (fb, _ground) => {
     const sprite = fb as Phaser.Physics.Arcade.Sprite;
     const body = sprite.body as Phaser.Physics.Arcade.Body;
@@ -1058,7 +880,8 @@ export class GameScene extends Phaser.Scene {
     const sprite = fb as Phaser.Physics.Arcade.Sprite;
     const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
     if (!sprite.active || !eSprite.active) return;
-    this.killEnemyWithAnimation(eSprite);
+    this.particles.burstPulse(sprite.x, sprite.y);
+    this.enemyManager.kill(eSprite);
     this.destroyPulseBolt(sprite);
     this.audio.playSe('stomp');
   };
@@ -1071,45 +894,9 @@ export class GameScene extends Phaser.Scene {
     this.player.setVelocity(0, PLAYER_DEATH_BOUNCE_VY);
   }
 
-  private killEnemyWithAnimation(enemy: Phaser.Physics.Arcade.Sprite): void {
-    enemy.disableBody(true, false);
-    enemy.setFlipY(true);
-    this.tweens.add({
-      targets: enemy,
-      y: enemy.y + ENEMY_DEATH_FALL_DISTANCE,
-      alpha: 0,
-      duration: ENEMY_DEATH_FALL_MS,
-      ease: 'Quad.easeIn',
-      onComplete: () => { enemy.destroy(); }
-    });
-  }
-
-  private startInvincible(): void {
-    this.invincibleTimer?.remove(false);
-    this.blinkTween?.stop();
-    this.player.setAlpha(1);
-    this.isInvincible = true;
-
-    this.blinkTween = this.tweens.add({
-      targets: this.player,
-      alpha: 0.3,
-      duration: INVINCIBLE_BLINK_MS,
-      yoyo: true,
-      repeat: -1
-    });
-
-    this.invincibleTimer = this.time.delayedCall(INVINCIBLE_MS, () => {
-      this.blinkTween?.stop();
-      this.blinkTween = null;
-      this.player.setAlpha(1);
-      this.isInvincible = false;
-      this.invincibleTimer = null;
-    });
-  }
-
   private decrementLifeAndContinue(): void {
     this.lives = Math.max(MIN_LIVES, this.lives - 1);
-    this.refreshLifeHud();
+    this.hud.setLives(this.lives);
     if (this.lives <= 0) {
       this.showGameOver();
     } else {
@@ -1117,102 +904,23 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** pendingAdvance を一度だけ実行し、null に戻す。 */
+  private firePendingAdvance(): void {
+    const fn = this.pendingAdvance;
+    this.pendingAdvance = null;
+    fn?.();
+  }
+
   private showGameOver(): void {
-    this.add
-      .text(this.scale.width / 2, this.scale.height / 2, GAME_OVER_TEXT, {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '64px',
-        color: '#ff3030',
-        stroke: '#000000',
-        strokeThickness: 8,
-        align: 'center'
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0);
+    this.hud.showCenterMessage(GAME_OVER_TEXT, {
+      color: GAME_OVER_COLOR,
+      fontSize: GAME_OVER_FONT_SIZE,
+      strokeThickness: GAME_OVER_STROKE_THICKNESS
+    });
+    this.hud.showPrompt(PROMPT_TITLE_TEXT);
     this.audio.stopBgm(BGM_FADE_OUT_MS);
-    this.time.delayedCall(GAME_OVER_TO_TITLE_DELAY_MS, () => this.scene.start('TitleScene'), [], this);
+    this.pendingAdvance = () => this.restartFromTop();
+    this.time.delayedCall(GAME_OVER_TO_TITLE_DELAY_MS, () => this.firePendingAdvance(), [], this);
   }
 
-  private formatLifeHud(): string {
-    return `${HUD_LIFE_LABEL}: ${HUD_LIFE_HEART} × ${this.lives}`;
-  }
-
-  private refreshLifeHud(): void {
-    this.lifeHud.setText(this.formatLifeHud());
-  }
-
-  private setupTouchControls(): void {
-    this.input.on('pointerdown', this.handlePointerDown, this);
-    this.input.on('pointermove', this.handlePointerMove, this);
-    this.input.on('pointerup', this.handlePointerUp, this);
-    this.input.on('pointerupoutside', this.handlePointerUp, this);
-  }
-
-  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    this.audio.unlock();
-    if (this.isMissed) return;
-    if (this.isCleared) {
-      if (this.isAllCleared) {
-        this.restartFromTop();
-      }
-      // 通常クリア中（次ステージへの自動遷移待ち）はタップを無視
-      return;
-    }
-
-    const splitX = this.scale.width * TOUCH_ZONE_SPLIT_RATIO;
-    if (pointer.x < splitX) {
-      // 左ゾーン: スライド移動
-      if (this.movePointerId === null) {
-        this.movePointerId = pointer.id;
-        this.touchMoveBaseX = pointer.x;
-        this.touchLeft = false;
-        this.touchRight = false;
-      }
-    } else {
-      // 右ゾーン
-      const now = this.time.now;
-      const isDoubleTap = (now - this.lastTapRightAt) <= DOUBLE_TAP_MS;
-      this.lastTapRightAt = now;
-
-      if (isDoubleTap && this.playerState === 'fire') {
-        this.tryShootPulseBolt();
-        return;
-      }
-
-      if (this.jumpPointerId === null) {
-        this.jumpPointerId = pointer.id;
-        this.touchJumpRequested = true;
-      }
-    }
-  }
-
-  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.isMissed || this.isCleared) return;
-    if (pointer.id !== this.movePointerId) return;
-    if (this.touchMoveBaseX === null) return;
-
-    const dx = pointer.x - this.touchMoveBaseX;
-    if (dx > TOUCH_SLIDE_THRESHOLD_PX) {
-      this.touchLeft = false;
-      this.touchRight = true;
-    } else if (dx < -TOUCH_SLIDE_THRESHOLD_PX) {
-      this.touchLeft = true;
-      this.touchRight = false;
-    } else {
-      this.touchLeft = false;
-      this.touchRight = false;
-    }
-  }
-
-  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
-    if (pointer.id === this.jumpPointerId) {
-      this.jumpPointerId = null;
-    }
-    if (pointer.id === this.movePointerId) {
-      this.movePointerId = null;
-      this.touchMoveBaseX = null;
-      this.touchLeft = false;
-      this.touchRight = false;
-    }
-  }
 }

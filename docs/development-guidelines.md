@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-27 |
+| 最終更新 | 2026-05-30 |
 | 担当 | モドリッチ |
 | ステータス | 承認済み |
 
@@ -253,9 +253,29 @@ if (!groundMask[probeRow]?.[probeCol]) { /* 反転 */ }
 
 現在は左側のスライドで移動し、右側のタップでジャンプする。パルス能力中は右側のダブルタップでパルス弾を発射する。操作方式を変更する場合は関連定数と E2E を併せて更新する。
 
-#### モバイルの対応画面向きは横画面のみとする
+#### モバイルの横画面化は CSS 回転方式で実装する
 
-モバイルで保証するプレイ向きは landscape のみとする。画面向きの契約を変更する場合は、`vite.config.ts` の manifest `orientation`、`src/main.ts` の向き変更専用処理の有無、`index.html` の portrait 専用 UI / CSS の有無、Playwright の orientation 契約テスト、および `docs/` の記述を同時に同期する。portrait 向け案内 UI を暗黙に追加しない。
+サポートするプレイ向きは landscape のみとする。portrait 端末は `body.is-portrait #game { transform: rotate(90deg); ... }` で CSS 強制回転し、横画面プレイを可能にする。向き判定は `window.matchMedia('(orientation: portrait)')` の `change` イベントで `body.is-portrait` クラスを付与する。`orientationchange` は非推奨のため使用しない。
+画面向きの実装を変更する場合は、`vite.config.ts` の manifest `orientation`、`src/main.ts` の matchMedia 処理、`index.html` の CSS スタイル、Playwright の orientation 契約テスト、および `docs/` の記述を同時に同期する。
+
+#### E2E ファサードは GameScene に必ず残す
+
+`tests/e2e/game-visual.spec.ts` は `scene.applyPlayerState()` / `scene.handleMiss()` / `scene.player` / `scene.playerState` / `scene.lives` / `scene.isChronoShielded` / `scene.isCleared` / `scene.stageIndex` 等を直接参照する。これらは E2E の実行基盤であり、マネージャへ責務を移管しても GameScene 上に薄い委譲ファサードとして残すこと。ファサードを除去するとテストが全滅する。
+
+#### 新規 SE キーの追加手順
+
+1. `src/config/gameConfig.ts` の `SE_PARAMS` に新キーと波形パラメータ（`type` / `frequency` / `duration` / `peakGain` / `endFrequency` 等）を追記する
+2. `src/audio/AudioManager.ts` の `SeKey` 型（`'jump' | 'stomp' | ...` の union）に新キーを追加する
+3. `audio.playSe('newKey')` で呼び出せることを typecheck で確認する
+
+#### マネージャパターン（src/game/）
+
+GameScene の肥大化を防ぐため、責務は `src/game/` 配下のプレーンクラスに分散する。
+
+- マネージャは `Phaser.Scene` を継承しない。コンストラクタで `scene: Phaser.Scene` を受け取る
+- マネージャ間の連携は `scene.events.emit/on` + `GameEvents` 文字列定数で疎結合化する
+- `update()` と `destroy()` を持つ場合は GameScene から委譲呼び出しする
+- E2E が間接検証する挙動（遷移・ミス・能力変化）のハンドラ本体は GameScene に残し、マネージャには参照だけを渡す
 
 #### HUD テキストは setScrollFactor(0) でカメラ固定
 

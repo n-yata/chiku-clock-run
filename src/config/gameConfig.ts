@@ -40,7 +40,9 @@ export const TEX_KEY = {
   springCoil: 'spring_coil',
   pulseCore: 'pulse_core',
   chronoCrystal: 'chrono_crystal',
-  pulseBolt: 'pulse_bolt'
+  pulseBolt: 'pulse_bolt',
+  /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
+  particle: 'particle_dot'
 } as const;
 
 export const ANIM_KEY = {
@@ -111,10 +113,16 @@ export interface SeDefinition {
 export const AUDIO_MASTER_GAIN = 0.5;
 export const AUDIO_BGM_GAIN = 0.6;
 
-export const SE_PARAMS: Record<'jump' | 'gearBit' | 'stomp' | 'miss' | 'beacon' | 'springCoil' | 'pulseCore' | 'pulseBolt' | 'chronoCrystal', SeDefinition> = {
+export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon' | 'springCoil' | 'pulseCore' | 'pulseBolt' | 'chronoCrystal', SeDefinition> = {
   jump: {
     steps: [
       { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
+    ]
+  },
+  land: {
+    // 着地の軽い「トッ」という低めの短打音。ジャンプ音とかぶらないよう控えめに。
+    steps: [
+      { freqStart: 200, freqEnd: 90, durationSec: 0.08, attackSec: 0.002, peakGain: 0.22, waveform: 'square', offsetSec: 0 }
     ]
   },
   gearBit: {
@@ -285,3 +293,105 @@ export const PLAYER_DEATH_FALL_MS = 800;
 export const ENEMY_DEATH_FALL_DISTANCE = 200;
 /** 敵死亡アニメーションの持続時間 (ms)。 */
 export const ENEMY_DEATH_FALL_MS = 500;
+
+// =====================================================================
+// UI ブラッシュアップスプリント (20260530-ui-brushup-sprint)
+// 値の確定根拠は .steering/20260530-ui-brushup-sprint/decisions.md を参照。
+// =====================================================================
+
+// --- ゲームフィール: ジャンプ ---
+/** コヨーテタイム (ms)。接地を離れてからこの時間内はジャンプを受け付ける。 */
+export const COYOTE_TIME_MS = 100;
+/** ジャンプ入力バッファ (ms)。着地前のこの時間内の入力を着地時に発火する。 */
+export const JUMP_BUFFER_MS = 120;
+/** 可変ジャンプ: 上昇中にジャンプ入力を離した際の Y 速度減衰率。 */
+export const JUMP_CUT_MULTIPLIER = 0.45;
+/** 可変ジャンプの最小上昇速度 (px/s, 負値)。これより遅くは切り詰めない下限。 */
+export const MIN_JUMP_VELOCITY = -180;
+/** 着地演出を発火する最小落下速度 (px/s)。これ未満の軽い着地では演出しない。 */
+export const LAND_MIN_FALL_VELOCITY = 260;
+
+// --- カメラ: デッドゾーン / 先読み ---
+/** カメラデッドゾーンの幅 (px, ビューポート基準)。 */
+export const CAMERA_DEADZONE_W = 220;
+/** カメラデッドゾーンの高さ (px, ビューポート基準)。 */
+export const CAMERA_DEADZONE_H = 160;
+/** 進行方向の先読み量 (px)。プレイヤーの向き先へカメラをずらす最大値。 */
+export const CAMERA_LOOKAHEAD_X = 110;
+/** 先読みオフセットの補間係数 (0..1)。小さいほど滑らか。 */
+export const CAMERA_LOOKAHEAD_LERP = 0.05;
+
+// --- 画面シェイク / ヒットストップ ---
+/** 敵踏み時のシェイク継続時間 (ms) と強度 (0..1 相当の割合)。 */
+export const SHAKE_STOMP_MS = 90;
+export const SHAKE_STOMP_INTENSITY = 0.006;
+/** 着地時のシェイク継続時間 (ms) と強度。 */
+export const SHAKE_LAND_MS = 55;
+export const SHAKE_LAND_INTENSITY = 0.003;
+/** ゴール時のシェイク継続時間 (ms) と強度。 */
+export const SHAKE_GOAL_MS = 240;
+export const SHAKE_GOAL_INTENSITY = 0.008;
+/** 敵踏み時のヒットストップ（物理一時停止）時間 (ms)。 */
+export const HITSTOP_MS = 70;
+
+// --- タッチ: 仮想ボタン視覚フィードバック ---
+/** タッチのスライド判定しきい値の改善値 (px)。P1 で TOUCH_SLIDE_THRESHOLD_PX を置換する。 */
+export const TOUCH_SLIDE_THRESHOLD_PX_V2 = 18;
+/** 仮想ジャンプボタンの半径 (px)。 */
+export const TOUCH_BUTTON_RADIUS = 46;
+/** 仮想ジャンプボタンの画面右下からのマージン (px)。 */
+export const TOUCH_BUTTON_MARGIN_X = 92;
+export const TOUCH_BUTTON_MARGIN_Y = 92;
+/** 仮想ボタンの通常時アルファ。 */
+export const TOUCH_BUTTON_BASE_ALPHA = 0.18;
+/** 仮想ボタンの押下時アルファ。 */
+export const TOUCH_BUTTON_FEEDBACK_ALPHA = 0.5;
+/** 仮想ボタンの塗り色。 */
+export const TOUCH_BUTTON_COLOR = 0xffffff;
+
+// --- パーティクル ---
+/** パーティクルテクスチャの 1 辺サイズ (px)。 */
+export const PARTICLE_DOT_SIZE = 6;
+/** 歯車片取得バースト: 数・寿命(ms)・速度・色。 */
+export const PARTICLE_GEAR = { count: 10, lifespanMs: 380, speedMin: 60, speedMax: 160, tint: 0xc9973a, scale: 0.9 } as const;
+/** 敵消滅バースト。 */
+export const PARTICLE_ENEMY = { count: 12, lifespanMs: 420, speedMin: 80, speedMax: 200, tint: 0x5ecabc, scale: 1.0 } as const;
+/** 着地土煙。 */
+export const PARTICLE_DUST = { count: 7, lifespanMs: 300, speedMin: 30, speedMax: 90, tint: 0xead9b0, scale: 0.8 } as const;
+/** パルス弾衝突バースト。 */
+export const PARTICLE_PULSE = { count: 8, lifespanMs: 300, speedMin: 70, speedMax: 170, tint: 0x40dce5, scale: 0.8 } as const;
+/** クリア星バースト。 */
+export const PARTICLE_CELEBRATE = { count: 24, lifespanMs: 900, speedMin: 120, speedMax: 320, tint: 0xffe066, scale: 1.2 } as const;
+
+// --- UI 集約: フォント・文言・スタイル ---
+/** UI 全体の標準フォントファミリ。 */
+export const UI_FONT_FAMILY = 'system-ui, sans-serif';
+/** 操作説明（通常時）。 */
+export const INSTRUCTION_TEXT = 'PC: ←/→ Space/↑ R   スマホ: 左スライドで左右移動 / 右タップでジャンプ';
+/** 操作説明のフォントサイズ・色。 */
+export const INSTRUCTION_FONT_SIZE = '16px';
+export const INSTRUCTION_FONT_COLOR = '#ffffff';
+/** 操作説明を表示してからフェードアウト開始までの時間 (ms)。 */
+export const INSTRUCTION_HOLD_MS = 4000;
+/** 操作説明のフェードアウト時間 (ms)。 */
+export const INSTRUCTION_FADE_MS = 600;
+
+/** 中央メッセージ（STAGE CLEAR / ALL CLEAR / GAME OVER）共通スタイル。 */
+export const CENTER_MSG_FONT_SIZE = '44px';
+export const CENTER_MSG_STROKE_COLOR = '#000000';
+export const CENTER_MSG_STROKE_THICKNESS = 6;
+export const STAGE_CLEAR_COLOR = '#ffffff';
+export const ALL_CLEAR_COLOR = '#ffff00';
+export const ALL_CLEAR_SUFFIX = 'タイトルへ戻ります...';
+export const GAME_OVER_FONT_SIZE = '64px';
+export const GAME_OVER_COLOR = '#ff3030';
+export const GAME_OVER_STROKE_THICKNESS = 8;
+
+/** 再開/次へプロンプト文言・スタイル・点滅間隔。 */
+export const PROMPT_RESTART_TEXT = 'タップ / キーでもう一度';
+export const PROMPT_NEXT_TEXT = 'タップ / キーで次へ';
+export const PROMPT_TITLE_TEXT = 'タップ / キーでタイトルへ';
+export const PROMPT_FONT_SIZE = '22px';
+export const PROMPT_FONT_COLOR = '#ffffff';
+export const PROMPT_BLINK_MS = 500;
+export const PROMPT_OFFSET_Y = 80;

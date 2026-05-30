@@ -23,4 +23,11 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, TitleScene, GameScene]
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// 縦持ち時に CSS 回転（body.is-portrait）で横画面プレイを可能にする（design §5.2）。
+const mq = window.matchMedia('(orientation: portrait)');
+const applyOrientation = () => document.body.classList.toggle('is-portrait', mq.matches);
+mq.addEventListener('change', applyOrientation);
+window.addEventListener('resize', () => game.scale.refresh());
+applyOrientation();

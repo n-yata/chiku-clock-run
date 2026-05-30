@@ -13,7 +13,8 @@ import {
   CHRONO_CRYSTAL_SPRITE_W, CHRONO_CRYSTAL_SPRITE_H,
   CHRONO_CRYSTAL_COLOR, CHRONO_CRYSTAL_OUTLINE_COLOR,
   PULSE_BOLT_SPRITE_W, PULSE_BOLT_SPRITE_H,
-  PULSE_BOLT_COLOR, PULSE_BOLT_HIGHLIGHT_COLOR
+  PULSE_BOLT_COLOR, PULSE_BOLT_HIGHLIGHT_COLOR,
+  PARTICLE_DOT_SIZE
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'walk1' | 'walk2' | 'jump';
@@ -211,6 +212,26 @@ export function buildPulseBoltSheet(scene: Phaser.Scene): void {
 
   if (!scene.textures.addCanvas(TEX_KEY.pulseBolt, canvas)) {
     throw new Error(`Failed to create texture: ${TEX_KEY.pulseBolt}`);
+  }
+}
+
+export function buildParticleTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.particle)) return;
+  const size = PARTICLE_DOT_SIZE;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+
+  // 白い円ドット。各演出側で tint を掛けて着色する（design §3.8）。
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (!scene.textures.addCanvas(TEX_KEY.particle, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.particle}`);
   }
 }
 

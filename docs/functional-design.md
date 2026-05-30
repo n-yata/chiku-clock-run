@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-27 |
+| 最終更新 | 2026-05-30 |
 | 担当 | バルベルデ |
 | ステータス | 承認済み |
 
@@ -101,7 +101,8 @@ sequenceDiagram
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
 | BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・能力アイテムの Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
 | TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
-| GameScene | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 障害機 AI / 歯車片取得 / 収集 HUD / 能力アイテム / ビーコン判定 / 全クリア後 `TitleScene` 遷移 |
+| GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する |
+| マネージャ群 | `src/game/` | `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler` の 8 クラス。プレーンクラス（Scene 非継承）として scene を受け取り責務を実行する |
 | ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
 | ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
 | ステージ契約検証 | `src/stages/stageValidation.ts` | 必須ルートの最大プレイヤー用クリアランス検証と、敵数・ギャップ数・高所区間数に基づく難易度進行の計測 |
@@ -276,10 +277,21 @@ stateDiagram-v2
 
 ### 対応画面向き
 
-- モバイルでサポートするプレイ向きは横画面（landscape）のみとする。
-- `vite.config.ts` が生成する PWA manifest の `orientation` は `landscape` を指定する。
-- `index.html` は portrait 用の案内 UI や表示切替 CSS を持たず、`src/main.ts` も向き変更専用のリフレッシュ処理を持たない。
+- サポートするプレイ向きは横画面（landscape）のみとする。PWA manifest の `orientation` は `landscape` を指定する。
+- 縦持ち（portrait）端末には CSS 強制回転方式で対応する: `body.is-portrait #game { transform: rotate(90deg); transform-origin: top left; position: absolute; top: 0; left: 100vw; width: 100vh; height: 100vw; }`。
+- 向き判定は `window.matchMedia('(orientation: portrait)')` の `change` イベントで `body.is-portrait` クラスを付与する。`orientationchange` API は非推奨のため使用しない。
 - `Phaser.Scale.RESIZE` は横画面内での表示領域変化への対応として維持する。
+
+### タッチ入力改善（V2）
+
+- スライド感度を `TOUCH_SLIDE_THRESHOLD_PX_V2 = 18px` に改善（旧値 12px）。誤反応を低減する。
+- 右ゾーンに仮想ジャンプボタン（半透明円）を表示し、押下中は `TOUCH_BUTTON_FEEDBACK_ALPHA` に変化させて視覚フィードバックを提供する。
+- クリア / ゲームオーバー待機中のタップは `consumeAdvanceTap()` で検出し、自動遷移を前倒しできる。
+
+### UI 再開フロー
+
+- STAGE CLEAR / ALL CLEAR / GAME OVER の各状態では `HudManager.showCenterMessage` + `showPrompt` で中央メッセージと点滅プロンプトを表示する。
+- `GameScene.pendingAdvance` に遷移アクション（next stage fade / TitleScene / fullRestart）を設定し、プレイヤーがキー（Space / ↑）またはタッチでタップすると `firePendingAdvance()` で前倒し実行できる。自動遷移タイマーも同じ `firePendingAdvance()` を呼ぶため、一度実行されると 2 回目は空振りする（null チェック）。
 
 ### クロックビーコン / 障害機 / 歯車片優先制御
 

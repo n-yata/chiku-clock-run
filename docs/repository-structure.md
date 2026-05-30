@@ -18,6 +18,16 @@ chiku-clock-run/
 │   │   └── animations.ts         # Phaser アニメーション定義（player_idle/walk/jump・enemy_walk）
 │   ├── config/                   # ゲーム全体の定数集約
 │   │   └── gameConfig.ts         # 物理・寸法・閾値・テクスチャキー・SE/BGM パラメータ
+│   ├── game/                     # GameScene マネージャ群（プレーンクラス、Scene 非継承）
+│   │   ├── events.ts             # GameEvents 定数 + PointPayload / LandPayload 型
+│   │   ├── CameraController.ts   # カメラズーム・追従・先読み・シェイク・フェード
+│   │   ├── HudManager.ts         # HUD 生成・レイアウト・中央メッセージ・プロンプト
+│   │   ├── ParticleManager.ts    # 短命バーストエミッタ（歯車片取得・敵撃破・着地土煙等）
+│   │   ├── TouchController.ts    # タッチ入力（スライド移動・仮想ボタン・前倒しタップ）
+│   │   ├── PlayerController.ts   # プレイヤー移動・ジャンプ・コヨーテ・バッファ・可変ジャンプ
+│   │   ├── EnemyManager.ts       # 敵 AI・壁反転・段差端反転・撃破アニメーション
+│   │   ├── PowerUpManager.ts     # 無敵・クロノシールド・プレイヤースナップ
+│   │   └── CollisionHandler.ts   # overlap/collider 登録の一元管理
 │   └── stages/                   # ステージデータ
 │       ├── index.ts              # STAGES 配列・getStage / nextStageIndex ユーティリティ
 │       ├── stage01.ts            # STAGE_01 定数（StageDefinition 型）
@@ -70,7 +80,9 @@ chiku-clock-run/
 | `src/scenes/BootScene.ts` | Canvas API で `buildPlayerSheet` / `buildEnemySheet` を呼びスプライトシートを生成後、通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
 | `src/scenes/TitleScene.ts` | タイトルテキスト + 「Press SPACE / Tap to Start」プロンプト（点滅）を表示。SPACE / Enter / タップで `GameScene` へ遷移。`Scale.RESIZE` 対応の `layout()` で中央配置を維持。全クリア後の自動遷移先 |
 | `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 能力アイテム / ビーコン Overlap / AudioManager 統合 |
-| `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`textures.exists` による冪等チェック付き |
+| `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`buildParticleTexture` で `particle_dot`（6px 白円）も生成する。`textures.exists` による冪等チェック付き |
+| `src/game/` | GameScene から分離した 8 マネージャクラス。それぞれ `Phaser.Scene` を継承しないプレーンクラスで、コンストラクタで `scene` を受け取る |
+| `src/game/events.ts` | `GameEvents` 文字列定数（`player:land` / `enemy:killed` / `gear:collected` 等）+ payload 型。マネージャ間の疎結合連携に使用 |
 | `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
 | `src/config/gameConfig.ts` | 物理・障害機 / 歯車片 / 能力アイテム・HUD・SE/BGM・寸法・テクスチャキーの単一集約点 |
 | `src/stages/stage01.ts` | 1 ステージ分のタイル定義。`'E'` は巻きネジ障害機、`'C'` は歯車片、`'M'` / `'F'` / `'S'` は能力アイテム |

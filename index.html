@@ -29,6 +29,15 @@
         width: 100%;
         height: 100%;
       }
+      body.is-portrait #game {
+        width: 100vh;
+        height: 100vw;
+        transform: rotate(90deg);
+        transform-origin: top left;
+        position: absolute;
+        top: 0;
+        left: 100vw;
+      }
     </style>
   </head>
   <body>

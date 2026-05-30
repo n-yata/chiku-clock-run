@@ -28,7 +28,7 @@ const CANVAS_HEIGHT = 540;
 const BACKGROUND: Rgb = { r: 92, g: 148, b: 252 };
 const PLAYER_SHOE: Rgb = { r: 107, g: 66, b: 38 };
 
-test('declares landscape-only display support without portrait fallback UI', async () => {
+test('supports landscape via CSS rotation on portrait devices without legacy API usage', async () => {
   const [manifestJson, mainSource, html] = await Promise.all([
     readSource('dist/manifest.webmanifest'),
     readSource('src/main.ts'),
@@ -36,7 +36,13 @@ test('declares landscape-only display support without portrait fallback UI', asy
   ]);
   const manifest: unknown = JSON.parse(manifestJson);
 
+  // manifest は landscape を維持（PWA 表示ヒント）
   expect(manifest).toMatchObject({ orientation: 'landscape' });
+  // CSS クラス基準の回転: body.is-portrait が html と main.ts の両方に存在すること
+  expect(html).toContain('is-portrait');
+  expect(mainSource).toContain('matchMedia');
+  expect(mainSource).toContain('is-portrait');
+  // E2E ヒットテスト破壊 / 非標準 API の使用禁止
   expect(mainSource).not.toContain('orientationchange');
   expect(html).not.toContain('rotate-notice');
   expect(html).not.toMatch(/@media\s*\(\s*orientation\s*:\s*portrait\s*\)/);

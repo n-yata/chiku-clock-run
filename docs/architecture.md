@@ -21,7 +21,7 @@
 
 - 言語: TypeScript 5.4
 - ゲームエンジン: Phaser 3.80（Arcade Physics）
-- ビルドツール: Vite 5.2
+- ビルドツール: Vite 6.4.2
 - スタイリング: なし（Phaser 内描画）
 - 状態管理: なし（シーン内 class フィールドのみ）
 - パッケージ管理: npm
@@ -31,7 +31,10 @@
   - Service Worker Precache + Web App Manifest 自動生成
   - 実行時依存ゼロ（ビルド時生成のみ、バンドルサイズへの影響 < 7 kB gzip）
 - 音声レイヤ: Web Audio API（ブラウザ標準、追加依存なし）
-  - `AudioManager`（`src/audio/AudioManager.ts`）— SE 5 種 + BGM ループを `OscillatorNode` / `GainNode` の短命グラフで合成。外部音声ファイル不使用
+  - `AudioManager`（`src/audio/AudioManager.ts`）— SE 6 種（jump / stomp / miss / beacon / land / 各能力 SE）+ BGM ループを `OscillatorNode` / `GainNode` の短命グラフで合成。外部音声ファイル不使用
+- マネージャ群: `src/game/` 配下のプレーンクラス群。`Phaser.Scene` を継承せず、コンストラクタで `scene` を受け取り各システム（Physics / Camera / Tweens / Events）を利用する
+  - `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler`
+  - マネージャ間連携は `src/game/events.ts` の `GameEvents` 文字列定数（`scene.events.emit/on`）で疎結合化
 - E2E: Playwright（Chromium） + `pngjs`
   - `npm run test:e2e` で Vite dev server を自動起動し、canvas screenshot のピクセル検証を実施
 
@@ -115,7 +118,7 @@
 ## 拡張・将来課題
 
 - v0.2（実装済み）: 巻きネジ障害機 4 体（踏みつけ停止 / 段差端反転 AI）・歯車片 15 個・収集 HUD・ミス演出
-- モバイル操作改善（実装済み）: 横画面のみを対応対象とし、左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理とピンチズーム無効化を維持する。portrait 専用オーバーレイや向き変更フォールバックは持たない
+- モバイル操作改善（実装済み）: 横画面のみを対応対象とし、左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理とピンチズーム無効化を維持する。portrait 端末は CSS 強制回転方式（`body.is-portrait #game { transform: rotate(90deg); }`）で横画面プレイ可能にする。`matchMedia('(orientation: portrait)')` の `change` イベントで `body.is-portrait` クラスを付与する（`orientationchange` 不使用）
 - v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE はジャンプ・歯車片取得・踏みつけ・ミス・ビーコン到達・能力取得等に対応
 - v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
@@ -123,5 +126,6 @@
 - v0.7（実装済み）: PWA 対応 — `vite-plugin-pwa`（Workbox ベース）を導入。`start_url` / `scope` は `VITE_BASE_PATH` から自動伝搬し、`orientation: landscape` で横画面起動を宣言する。時計文字盤と歯車を意匠にしたアイコン 3 種を `scripts/generate-icons.mjs` で生成
 - v0.8（実装済み）: スプライトアニメーション化 — `document.createElement('canvas')` + `textures.addCanvas` + `Texture.add(name, ...)` によるプログラマティックスプライトシート生成。プレイヤー 4 フレーム（idle/walk1/walk2/jump）・敵 2 フレーム（walk1/walk2）をアニメーション再生。`generateFrameNames` + 名前付きフレームで管理。描画は 32×48 固定座標空間で行い `drawImage` でフレームサイズへスケーリング（サイズ変更に `gameConfig.ts` 定数変更のみで追従）。踏みつけ判定を `pBody.centerY <= eBody.centerY` 方式に変更し高度差バグを解消
 - v1.1（実装済み）: Playwright E2E 導入 — `npm run test:e2e` で Chromium を起動し、地面・歯車片・巻きネジ障害機が canvas に描画されることをピクセル検証
+- v1.2（実装済み）: GameScene 責務分離 + UI / 演出ブラッシュアップ — `src/game/` マネージャ群（8 クラス）に責務を分散し、コヨーテタイム・ジャンプバッファ・可変ジャンプ・ヒットストップ・パーティクル・カメラシェイク・HUD 再開プロンプト・portrait CSS 回転を実装
 - 今後の拡張: ライフ / パワーアップ、音量調整 UI、背景画像追加
 - ステージ規模拡大時: 2D 配列 → Phaser Tilemap (Tiled エディタ) への移行余地（`StageDefinition` 型をアダプタで吸収）

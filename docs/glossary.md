@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作成日 | 2026-05-04 |
-| 最終更新 | 2026-05-04 |
+| 最終更新 | 2026-05-30 |
 | 担当 | モドリッチ |
 | ステータス | 承認済み |
 
@@ -37,6 +37,14 @@
 | リスタート | Restart | ステージを初期状態に戻すこと。通常は `scene.restart()` を使い、障害再発時のみ全体リロードへ切り替えられる |
 | 落下 | Fall | プレイヤーの Y 座標が `FALL_THRESHOLD_Y` を超えた状態。ミスと同一フローでリセットされる |
 | タッチゾーン | Touch Zone | タッチ入力の画面領域区分。左側スライドで移動し、右側タップでジャンプ、能力中は右側ダブルタップで発射する |
+| コヨーテタイム | Coyote Time | 崖から足を踏み外した直後（`COYOTE_TIME_MS` 以内）でもジャンプを受け付けるゲームフィール改善技術。空中にいても地面にいるとみなしてジャンプを許容する |
+| ジャンプバッファ | Jump Buffer | 着地直前（`JUMP_BUFFER_MS` 以内）のジャンプ入力を保持し、着地と同時に自動発火する技術。タイミングが合わなかったジャンプ操作をカバーする |
+| 可変ジャンプ | Variable Jump | ジャンプボタンを早く離すと低く、長押しすると高くなるジャンプ。上昇中にボタンを離すと `vy *= JUMP_CUT_MULTIPLIER` で上昇速度を減衰させ、`MIN_JUMP_VELOCITY` でクランプする |
+| ヒットストップ | Hitstop | 敵を踏んだ瞬間に物理演算を `HITSTOP_MS` だけ停止し、手応えを演出するゲームフィール技術。物理のみ停止し、音声・描画は継続する |
+| カメラデッドゾーン | Camera Deadzone | プレイヤーがこの矩形内に留まる間はカメラ追従しない領域。小さな動きでカメラが揺れるのを防ぐ（`CAMERA_DEADZONE_W` × `CAMERA_DEADZONE_H`） |
+| カメラ先読み | Camera Lookahead | プレイヤーの移動方向に先んじてカメラのフォローオフセットを補間することで、進行方向の視野を広げる技術 |
+| マネージャ群 | Manager Classes | `src/game/` 配下の 8 プレーンクラス（`CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler`）。GameScene から責務を分散受け取りする |
+| GameEvents | GameEvents | `src/game/events.ts` の文字列定数オブジェクト。`player:land` / `enemy:killed` / `gear:collected` 等の文字列でマネージャ間の疎結合連携を実現する |
 
 ---
 
