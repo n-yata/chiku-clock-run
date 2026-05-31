@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GameScene } from './scenes/GameScene';
+import { EndingScene } from './scenes/EndingScene';
 import { BG_COLOR, GRAVITY_Y } from './config/gameConfig';
 
 // 縦持ち時に CSS 回転（body.is-portrait）で横画面プレイを可能にする（design §5.2）。
@@ -30,7 +31,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.NO_CENTER
   },
-  scene: [BootScene, TitleScene, GameScene]
+  scene: [BootScene, TitleScene, GameScene, EndingScene]
 };
 
 const game = new Phaser.Game(config);

@@ -14,6 +14,7 @@ chiku-clock-run/
 │   │   ├── BootScene.ts          # Canvas API でスプライトシート生成 → TitleScene へ遷移（リロード復帰時は GameScene 直行）
 │   │   ├── TitleScene.ts         # タイトル画面（SPACE/Enter/Tap でゲーム開始、全クリア後に自動遷移で戻り先）
 │   │   ├── GameScene.ts          # ランタイム（地形構築・操作・カメラ・ビーコン・能力・音声）
+│   │   ├── EndingScene.ts        # 全クリア演出（時計修理→始動→空が晴れる→ハッピーエンド。Graphics+Tween）
 │   │   ├── spriteSheets.ts       # Canvas API によるスプライトシート生成（プレイヤー 4F・敵 2F）
 │   │   └── animations.ts         # Phaser アニメーション定義（player_idle/walk/jump・enemy_walk）
 │   ├── config/                   # ゲーム全体の定数集約
@@ -79,7 +80,8 @@ chiku-clock-run/
 | `src/audio/AudioManager.ts` | Web Audio API による歯車片取得・ビーコン到達等の SE と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応 |
 | `src/scenes/BootScene.ts` | Canvas API で `buildPlayerSheet` / `buildEnemySheet` を呼びスプライトシートを生成後、通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
 | `src/scenes/TitleScene.ts` | タイトルテキスト + 「Press SPACE / Tap to Start」プロンプト（点滅）を表示。SPACE / Enter / タップで `GameScene` へ遷移。`Scale.RESIZE` 対応の `layout()` で中央配置を維持。全クリア後の自動遷移先 |
-| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 被弾・ライフ / ビーコン Overlap / AudioManager 統合 |
+| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 被弾・ライフ / ビーコン Overlap / AudioManager 統合。全ステージクリア時は `EndingScene` へ遷移（集めた歯車の通算を引き継ぐ） |
+| `src/scenes/EndingScene.ts` | 全クリア演出シーン。物理ワールド非依存で、`Graphics` + `Tween` により「止まった時計 → 歯車組み込み → 針が動き出す → 空が晴れる → ハッピーエンド」の絵巻を再生。タップ/キーでスキップ可、完了後 `TitleScene` へ自動復帰 |
 | `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`buildParticleTexture` で `particle_dot`（6px 白円）も生成する。`textures.exists` による冪等チェック付き |
 | `src/game/` | GameScene から分離した 8 マネージャクラス。それぞれ `Phaser.Scene` を継承しないプレーンクラスで、コンストラクタで `scene` を受け取る |
 | `src/game/events.ts` | `GameEvents` 文字列定数（`player:land` / `enemy:killed` / `gear:collected` 等）+ payload 型。マネージャ間の疎結合連携に使用 |

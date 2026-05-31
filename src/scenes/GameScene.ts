@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import {
-  ALL_CLEAR_TO_TITLE_DELAY_MS,
   ANIM_KEY,
   BGM_FADE_OUT_MS,
   GEAR_BIT_SPRITE_H,
@@ -32,8 +31,6 @@ import {
   USE_HARD_RELOAD_FALLBACK,
   INSTRUCTION_TEXT,
   STAGE_CLEAR_COLOR,
-  ALL_CLEAR_COLOR,
-  ALL_CLEAR_SUFFIX,
   GAME_OVER_FONT_SIZE,
   GAME_OVER_COLOR,
   GAME_OVER_STROKE_THICKNESS,
@@ -80,6 +77,9 @@ export class GameScene extends Phaser.Scene {
   private gearBits!: Phaser.Physics.Arcade.StaticGroup;
   private gearBitTotal = 0;
   private gearBitsCollected = 0;
+  // 全ステージ通算の歯車数（このステージ開始前までの累計）。クリア時にエンディングへ引き継ぐ。
+  private priorGearsCollected = 0;
+  private priorGearsTotal = 0;
   private groundMask: ReadonlyArray<ReadonlyArray<boolean>> = [];
   private audio!: AudioManager;
 
@@ -111,12 +111,16 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { stageIndex?: number; lives?: number }): void {
+  init(data: { stageIndex?: number; lives?: number; gearsCollected?: number; gearsTotal?: number }): void {
     const resolved = getStage(data?.stageIndex ?? 0);
     this.stageIndex = resolved.index;
     this.stage = resolved.stage;
     const incomingLives = data?.lives ?? INITIAL_LIVES;
     this.lives = Math.min(MAX_LIVES, Math.max(MIN_LIVES, Number.isFinite(incomingLives) ? Math.floor(incomingLives) : INITIAL_LIVES));
+    const c = Number(data?.gearsCollected);
+    const t = Number(data?.gearsTotal);
+    this.priorGearsCollected = Number.isFinite(c) && c >= 0 ? Math.floor(c) : 0;
+    this.priorGearsTotal = Number.isFinite(t) && t >= 0 ? Math.floor(t) : 0;
   }
 
   // --- E2E / 内部参照向けファサード（実体は PowerUpManager, D-004）---
@@ -525,7 +529,13 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.teardownPhysics();
-    this.scene.restart({ stageIndex: this.stageIndex, lives: this.lives });
+    // 同ステージのやり直しなので、このステージ分は加算せず通算（開始前まで）を保つ。
+    this.scene.restart({
+      stageIndex: this.stageIndex,
+      lives: this.lives,
+      gearsCollected: this.priorGearsCollected,
+      gearsTotal: this.priorGearsTotal
+    });
   }
 
   private onGoalHit = (): void => {
@@ -570,13 +580,20 @@ export class GameScene extends Phaser.Scene {
 
   private showAllClear(): void {
     this.isAllCleared = true;
-    this.hud.showCenterMessage(
-      `ALL CLEAR!\n${this.hud.formatGear()}\n${ALL_CLEAR_SUFFIX}`,
-      { color: ALL_CLEAR_COLOR }
-    );
-    this.hud.showPrompt(PROMPT_TITLE_TEXT);
-    this.pendingAdvance = () => this.restartFromTop();
-    this.time.delayedCall(ALL_CLEAR_TO_TITLE_DELAY_MS, () => this.firePendingAdvance(), [], this);
+    // 全クリア演出は専用の EndingScene に委譲する。集めた歯車の通算をエンディングへ渡す。
+    const gearsCollected = this.priorGearsCollected + this.gearBitsCollected;
+    const gearsTotal = this.priorGearsTotal + this.gearBitTotal;
+    this.cameras.main.fadeOut(STAGE_FADE_MS, 0, 0, 0);
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      this.teardownPhysics();
+      this.scene.start('EndingScene', { gearsCollected, gearsTotal });
+    };
+    this.cameras.main.once('camerafadeoutcomplete', go);
+    // カメライベントが発火しない場合のセーフティタイマー
+    this.time.delayedCall(STAGE_FADE_MS + 200, go);
   }
 
   private teardownPhysics(): void {
@@ -594,7 +611,13 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.teardownPhysics();
-    this.scene.restart({ stageIndex: index, lives: this.lives });
+    // このステージで集めた分を通算へ加算して次ステージへ引き継ぐ。
+    this.scene.restart({
+      stageIndex: index,
+      lives: this.lives,
+      gearsCollected: this.priorGearsCollected + this.gearBitsCollected,
+      gearsTotal: this.priorGearsTotal + this.gearBitTotal
+    });
   }
 
   private restartFromTop(): void {

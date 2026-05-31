@@ -340,3 +340,48 @@ export const PROMPT_FONT_SIZE = '22px';
 export const PROMPT_FONT_COLOR = '#ffffff';
 export const PROMPT_BLINK_MS = 500;
 export const PROMPT_OFFSET_Y = 80;
+
+// =====================================================================
+// エンディングムービー (20260531-ending-movie)
+// 全クリア演出（時計修理 → 始動 → 空が晴れる → ハッピーエンド）の
+// 色・タイミング・文言を集約。値の根拠は当スプリントの design.md を参照。
+// =====================================================================
+
+// --- 空（背景）の色: 夜/曇り → 晴れ ---
+export const ENDING_SKY_NIGHT_TOP = 0x0a1226; // 導入時・上部（沈んだ夜空）
+export const ENDING_SKY_NIGHT_BOT = 0x16273f; // 導入時・下部（工房の宵闇）
+export const ENDING_SKY_DAY_TOP   = 0x3f96e0; // 晴れ・上部（澄んだ青空）
+export const ENDING_SKY_DAY_BOT   = 0xcdeaf6; // 晴れ・下部（地平の光）
+export const ENDING_SUN_COLOR     = 0xffe6a0; // 昇る太陽のコア
+export const ENDING_RAY_COLOR     = 0xfff3c8; // 光条
+
+// --- 大時計の色 ---
+export const ENDING_CLOCK_BRASS      = 0xc9973a; // 真鍮の枠・目盛り
+export const ENDING_CLOCK_BRASS_DARK = 0x7a5420; // 真鍮の陰
+export const ENDING_CLOCK_FACE_NIGHT = 0x0b1020; // 文字盤（始動前・暗い）
+export const ENDING_CLOCK_FACE_DAY   = 0xfff6e0; // 文字盤（始動後・明るい）
+export const ENDING_HAND_HOUR_COLOR  = 0x2a1a05; // 時針
+export const ENDING_HAND_MIN_COLOR   = 0x4a2f08; // 分針
+
+// --- 飛来する歯車の色 ---
+export const ENDING_GEAR_COLOR = 0xc9973a; // 歯車本体（真鍮）
+export const ENDING_GEAR_DARK  = 0x6b4226; // 歯車の陰
+
+// --- タイミング (ms): フェーズ開始は create からの相対 ---
+export const ENDING_FADE_IN_MS        = 700;  // 導入フェードイン
+export const ENDING_GEARS_START_MS    = 1400; // 歯車組み込み開始
+export const ENDING_GEAR_FLY_MS       = 900;  // 1 個あたりの飛来時間
+export const ENDING_GEAR_STAGGER_MS   = 420;  // 歯車ごとの飛来ずらし
+export const ENDING_CLOCK_START_MS    = 4200; // 時計始動（全歯車が収まってから: 1400+4*420+900≈3980 の後）
+export const ENDING_SKY_CLEAR_MS      = 4900; // 空が晴れはじめる開始
+export const ENDING_SKY_TWEEN_MS      = 2600; // 空グラデーション遷移の長さ
+export const ENDING_FINALE_MS         = 7600; // ハッピーエンド表示開始
+export const ENDING_TO_TITLE_DELAY_MS = 4000; // finale 後タイトル復帰までの待ち
+
+// --- 文言 ---
+export const ENDING_TITLE_TEXT    = 'HAPPY END';
+export const ENDING_SUBTITLE_TEXT = '時計はまた時を刻みはじめた';
+export const ENDING_GEAR_PREFIX   = '集めた歯車';
+export const ENDING_SKIP_PROMPT   = 'タップ / キーでスキップ';
+export const ENDING_TITLE_COLOR   = '#fff0b0';
+export const ENDING_SUBTITLE_COLOR = '#ffe6a0';
