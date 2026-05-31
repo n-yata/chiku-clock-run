@@ -34,18 +34,12 @@ export const PLAYER_COAT_COLOR    = 0x1a3a50; // ダークティールのコー�
 export const GROUND_COLOR = 0x8b4513;
 export const BEACON_COLOR = 0x42c5bb;
 
-export type PlayerState = 'small' | 'big' | 'fire';
-
 export const TEX_KEY = {
   playerSheet: 'player_sheet',
   ground: 'ground',
   beacon: 'beacon',
   enemySheet: 'enemy_sheet',
   gearBit: 'gear_bit',
-  springCoil: 'spring_coil',
-  pulseCore: 'pulse_core',
-  chronoCrystal: 'chrono_crystal',
-  pulseBolt: 'pulse_bolt',
   /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
   particle: 'particle_dot',
   /** ゲーム背景タイル（ワークショップの夜景シルエット）。 */
@@ -136,7 +130,7 @@ export interface SeDefinition {
 export const AUDIO_MASTER_GAIN = 0.5;
 export const AUDIO_BGM_GAIN = 0.6;
 
-export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon' | 'springCoil' | 'pulseCore' | 'pulseBolt' | 'chronoCrystal', SeDefinition> = {
+export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon', SeDefinition> = {
   jump: {
     steps: [
       { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
@@ -170,37 +164,6 @@ export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 
       { freqStart: 659,  freqEnd: 659,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.15 },
       { freqStart: 784,  freqEnd: 784,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.30 },
       { freqStart: 1047, freqEnd: 1047, durationSec: 0.20, attackSec: 0.005, peakGain: 0.40, waveform: 'square', offsetSec: 0.45 }
-    ]
-  },
-  springCoil: {
-    steps: [
-      { freqStart: 523,  freqEnd: 523,  durationSec: 0.08, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0    },
-      { freqStart: 659,  freqEnd: 659,  durationSec: 0.08, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.08 },
-      { freqStart: 784,  freqEnd: 784,  durationSec: 0.10, attackSec: 0.003, peakGain: 0.32, waveform: 'square', offsetSec: 0.16 },
-      { freqStart: 1047, freqEnd: 1319, durationSec: 0.18, attackSec: 0.003, peakGain: 0.35, waveform: 'square', offsetSec: 0.26 }
-    ]
-  },
-  pulseCore: {
-    steps: [
-      { freqStart: 523,  freqEnd: 523,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.00 },
-      { freqStart: 659,  freqEnd: 659,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.30, waveform: 'square', offsetSec: 0.06 },
-      { freqStart: 784,  freqEnd: 784,  durationSec: 0.06, attackSec: 0.003, peakGain: 0.32, waveform: 'square', offsetSec: 0.12 },
-      { freqStart: 1047, freqEnd: 1047, durationSec: 0.06, attackSec: 0.003, peakGain: 0.34, waveform: 'square', offsetSec: 0.18 },
-      { freqStart: 1568, freqEnd: 1976, durationSec: 0.20, attackSec: 0.003, peakGain: 0.38, waveform: 'square', offsetSec: 0.24 }
-    ]
-  },
-  pulseBolt: {
-    steps: [
-      { freqStart: 880, freqEnd: 1760, durationSec: 0.08, attackSec: 0.002, peakGain: 0.25, waveform: 'square', offsetSec: 0 }
-    ]
-  },
-  chronoCrystal: {
-    steps: [
-      { freqStart: 784,  freqEnd: 784,  durationSec: 0.05, attackSec: 0.002, peakGain: 0.28, waveform: 'square',   offsetSec: 0.00 },
-      { freqStart: 988,  freqEnd: 988,  durationSec: 0.05, attackSec: 0.002, peakGain: 0.28, waveform: 'square',   offsetSec: 0.05 },
-      { freqStart: 1175, freqEnd: 1175, durationSec: 0.05, attackSec: 0.002, peakGain: 0.30, waveform: 'square',   offsetSec: 0.10 },
-      { freqStart: 1568, freqEnd: 1568, durationSec: 0.05, attackSec: 0.002, peakGain: 0.32, waveform: 'square',   offsetSec: 0.15 },
-      { freqStart: 1976, freqEnd: 2349, durationSec: 0.25, attackSec: 0.002, peakGain: 0.36, waveform: 'triangle', offsetSec: 0.20 }
     ]
   }
 };
@@ -257,14 +220,8 @@ export const MIN_LIVES = 0;
 export const MAX_LIVES = 99;
 export const INVINCIBLE_MS = 1500;
 export const INVINCIBLE_BLINK_MS = 100;
-export const BIG_SCALE = 1.5;
-export const SPRING_COIL_SPRITE_W = 32;
-export const SPRING_COIL_SPRITE_H = 32;
-export const SPRING_COIL_BRASS_COLOR = 0xc9973a;
-export const SPRING_COIL_HIGHLIGHT_COLOR = 0xf4d58d;
-export const SPRING_COIL_DARK_COLOR = 0x6f5628;
-export const STAGE_SPRING_COIL_MIN = 0;
-export const STAGE_SPRING_COIL_MAX = 5;
+/** 敵に被弾してその場復帰する際の上方向ノックバック初速 (px/s, 負値で上)。 */
+export const PLAYER_HIT_KNOCKBACK_VY = -260;
 export const HUD_LIFE_LABEL = 'ライフ';
 export const HUD_LIFE_HEART = '♥';
 export const HUD_LIFE_X = 16;
@@ -273,39 +230,6 @@ export const HUD_INSTRUCTION_Y = 88;
 export const GAME_OVER_TEXT = 'GAME OVER';
 export const GAME_OVER_TO_TITLE_DELAY_MS = 2500;
 
-// --- v1.0: パルスコア / クロノクリスタル ---
-export const PULSE_BOLT_SPEED_X = 360;
-export const PULSE_BOLT_SPEED_Y = -180;
-export const PULSE_BOLT_BOUNCE_Y = 0.7;
-export const PULSE_BOLT_BOUNCE_COUNT = 3;
-export const PULSE_BOLT_LIFETIME_MS = 2500;
-export const PULSE_BOLT_MAX_COUNT = 2;
-export const PULSE_BOLT_COOLDOWN_MS = 200;
-export const PULSE_BOLT_SPRITE_W = 16;
-export const PULSE_BOLT_SPRITE_H = 16;
-export const PULSE_BOLT_BODY_W = 12;
-export const PULSE_BOLT_BODY_H = 12;
-export const PULSE_BOLT_COLOR = 0x40dce5;
-export const PULSE_BOLT_HIGHLIGHT_COLOR = 0xe2fdff;
-export const CHRONO_INVINCIBLE_MS = 8000;
-export const CHRONO_BLINK_MS = 80;
-export const CHRONO_END_WARNING_MS = 1500;
-export const CHRONO_CRYSTAL_SPRITE_W = 28;
-export const CHRONO_CRYSTAL_SPRITE_H = 28;
-export const CHRONO_CRYSTAL_COLOR = 0x4fcad1;
-export const CHRONO_CRYSTAL_OUTLINE_COLOR = 0x18545d;
-export const PULSE_CORE_SPRITE_W = 32;
-export const PULSE_CORE_SPRITE_H = 32;
-export const PULSE_CORE_OUTER_COLOR = 0x16737a;
-export const PULSE_CORE_INNER_COLOR = 0x7ff7ef;
-export const PULSE_CORE_WIRE_COLOR = 0xc9973a;
-export const PLAYER_FIRE_TINT = 0xffe0a0;
-export const STAGE_PULSE_CORE_MIN = 0;
-export const STAGE_PULSE_CORE_MAX = 3;
-export const STAGE_CHRONO_CRYSTAL_MIN = 0;
-export const STAGE_CHRONO_CRYSTAL_MAX = 2;
-export const DOUBLE_TAP_MS = 300;
-export const HUD_PULSE_LABEL = 'PC: ←/→ Space/↑ R  [PULSE: Z]   スマホ: スライド移動 / 右タップジャンプ / 右ダブルタップPULSE';
 
 // --- アニメーション追加: やられ演出 ---
 /** プレイヤー死亡時の上方向初速 (px/s)。負値で上方向。 */
@@ -381,8 +305,6 @@ export const PARTICLE_GEAR = { count: 10, lifespanMs: 380, speedMin: 60, speedMa
 export const PARTICLE_ENEMY = { count: 18, lifespanMs: 460, speedMin: 110, speedMax: 260, tint: 0x5ecabc, scale: 1.2 } as const;
 /** 着地土煙。 */
 export const PARTICLE_DUST = { count: 7, lifespanMs: 300, speedMin: 30, speedMax: 90, tint: 0xead9b0, scale: 0.8 } as const;
-/** パルス弾衝突バースト。 */
-export const PARTICLE_PULSE = { count: 8, lifespanMs: 300, speedMin: 70, speedMax: 170, tint: 0x40dce5, scale: 0.8 } as const;
 /** クリア星バースト。 */
 export const PARTICLE_CELEBRATE = { count: 36, lifespanMs: 1000, speedMin: 150, speedMax: 380, tint: 0xffe066, scale: 1.35 } as const;
 

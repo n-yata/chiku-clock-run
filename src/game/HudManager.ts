@@ -201,7 +201,7 @@ export class HudManager {
 
   /**
    * 操作説明を文言つきで表示し、一定時間後にフェードアウトする。
-   * 状態変化（通常 / fire）のたびに呼び、再表示 + 再スケジュールする。
+   * ステージ開始時に呼び、表示 + フェードをスケジュールする。
    */
   showInstruction(text: string): void {
     if (!this.instructionText) return;

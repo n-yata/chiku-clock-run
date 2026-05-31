@@ -185,47 +185,6 @@ test('keeps maximum-size routes clear and raises difficulty stage by stage', () 
   expect(validateDifficultyProgression(STAGES)).toEqual([]);
 });
 
-test('fits a fire-size player on every declared critical path landing', async ({ page }) => {
-  await installGameCapture(page);
-  await page.goto('/');
-  const canvas = page.locator('canvas');
-  await startGameAndWaitForPlayer(page, canvas);
-
-  for (let stageIndex = 0; stageIndex < STAGES.length; stageIndex++) {
-    const stage = STAGES[stageIndex];
-    await page.evaluate((index) => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      scene.scene.restart({ stageIndex: index, lives: scene.lives, playerState: 'fire' });
-    }, stageIndex);
-    await page.waitForFunction((index) => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      return scene?.stageIndex === index && scene?.playerState === 'fire' && Boolean(scene.player?.body);
-    }, stageIndex);
-
-    for (const segment of stage.criticalPath) {
-      const landing = await page.evaluate(({ fromCol, toCol, supportRow }) => {
-        const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-        const x = ((fromCol + toCol) / 2 + 0.5) * 32;
-        const floorTop = supportRow * 32;
-        scene.player.body.reset(x, floorTop - scene.player.displayHeight / 2);
-        scene.player.setVelocity(0, 0);
-        return {
-          top: scene.player.body.top,
-          floorTop,
-          height: scene.player.body.height,
-          displayHeight: scene.player.displayHeight
-        };
-      }, segment);
-
-      expect(landing.displayHeight, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBe(84);
-      expect(landing.height, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBe(84);
-      expect(landing.top, `${stage.id} ${segment.fromCol}-${segment.toCol}`).toBeGreaterThanOrEqual(
-        (segment.supportRow - 3) * 32
-      );
-    }
-  }
-});
-
 test('renders sprite assets in the game canvas', async ({ page }) => {
   await installGameCapture(page);
   const consoleErrors: string[] = [];
@@ -286,141 +245,6 @@ test('renders sprite assets in the game canvas', async ({ page }) => {
   expect(consoleErrors.filter((line) => line.includes('[BootScene]'))).toEqual([]);
 });
 
-test('collects clockwork abilities, fires a pulse bolt, and reaches the beacon through gameplay wiring', async ({ page }) => {
-  await installGameCapture(page);
-  await page.goto('/');
-  const canvas = page.locator('canvas');
-  await startGameAndWaitForPlayer(page, canvas);
-  await page.evaluate(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    scene.scene.restart({ stageIndex: 1, lives: scene.lives, playerState: 'small' });
-  });
-  await page.waitForFunction(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    return scene?.stageIndex === 1 && Boolean(scene.player?.body);
-  });
-
-  async function overlapFirstPickup(groupName: string): Promise<void> {
-    await page.evaluate((targetGroupName) => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      const pickup = scene?.[targetGroupName]?.getChildren().find((child: any) => child.active);
-      if (!pickup) throw new Error(`${targetGroupName} pickup is not available in stage`);
-      scene.player.body.reset(pickup.x, pickup.y);
-      scene.player.setVelocity(0, 0);
-    }, groupName);
-  }
-
-  await overlapFirstPickup('springCoils');
-  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'big');
-
-  await overlapFirstPickup('pulseCores');
-  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'fire');
-  await page.evaluate(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    scene.player.body.reset(320, 120);
-    scene.player.setVelocity(0, 0);
-  });
-  await canvas.click();
-  await page.keyboard.down('KeyZ');
-  await page.waitForFunction(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    return scene?.children.list.some((child: any) => child.active && child.texture?.key === 'pulse_bolt');
-  });
-  await page.keyboard.up('KeyZ');
-
-  await overlapFirstPickup('chronoCrystals');
-  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.isChronoShielded === true);
-
-  await page.evaluate(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
-    if (!beacon) throw new Error('beacon sprite is not available in stage');
-    scene.player.body.reset(beacon.x, beacon.y);
-    scene.player.setVelocity(0, 0);
-  });
-  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.isCleared === true);
-  await page.waitForFunction(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    return scene?.stageIndex === 2 && Boolean(scene.player?.body);
-  });
-});
-
-test('preserves fire movement through each stage transition and reaches all clear', async ({ page }) => {
-  await installGameCapture(page);
-  await page.goto('/');
-  const canvas = page.locator('canvas');
-  await startGameAndWaitForPlayer(page, canvas);
-
-  await page.evaluate(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    const pulseCore = scene.pulseCores.getChildren().find((child: any) => child.active);
-    if (!pulseCore) throw new Error('Stage 01 pulse core is not available');
-    scene.player.body.reset(pulseCore.x, pulseCore.y);
-    scene.player.setVelocity(0, 0);
-  });
-  await page.waitForFunction(() => (window as any).__capturedGame?.scene.getScene('GameScene')?.playerState === 'fire');
-
-  async function enterNextStage(expectedIndex: number): Promise<void> {
-    await page.evaluate(() => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
-      if (!beacon) throw new Error('beacon sprite is not available');
-      scene.player.body.reset(beacon.x, beacon.y);
-      scene.player.setVelocity(0, 0);
-    });
-    await page.waitForFunction((index) => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      return scene?.stageIndex === index && scene?.playerState === 'fire' && Boolean(scene.player?.body);
-    }, expectedIndex);
-
-    const beforeMove = await page.evaluate(() => {
-      const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-      const body = scene.player.body;
-      const overlapsGround = scene.groundMask.some((row: boolean[], rowIndex: number) =>
-        row.some((blocked: boolean, colIndex: number) => {
-          if (!blocked) return false;
-          const left = colIndex * 32;
-          const top = rowIndex * 32;
-          return (
-            body.left < left + 32 &&
-            body.right > left &&
-            body.top < top + 32 &&
-            body.bottom > top
-          );
-        })
-      );
-      return {
-        x: scene.player.x,
-        overlapsGround
-      };
-    });
-    expect(beforeMove.overlapsGround, `stage ${expectedIndex + 1} spawn overlaps ground`).toBe(false);
-    await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(250);
-    await page.keyboard.up('ArrowRight');
-    const afterX = await page.evaluate(
-      () => (window as any).__capturedGame?.scene.getScene('GameScene')?.player.x as number
-    );
-    expect(afterX, `stage ${expectedIndex + 1} spawn should allow movement`).toBeGreaterThan(beforeMove.x);
-  }
-
-  await enterNextStage(1);
-  await enterNextStage(2);
-
-  await page.evaluate(() => {
-    const scene = (window as any).__capturedGame?.scene.getScene('GameScene') as any;
-    const beacon = scene.children.list.find((child: any) => child.texture?.key === 'beacon');
-    if (!beacon) throw new Error('final beacon sprite is not available');
-    scene.player.body.reset(beacon.x, beacon.y);
-    scene.player.setVelocity(0, 0);
-  });
-  await page.waitForFunction(
-    () => (window as any).__capturedGame?.scene.isActive('TitleScene'),
-    undefined,
-    { timeout: 10_000 }
-  );
-});
-
 test('migrates a valid legacy stage index without retaining the old key', async ({ page }) => {
   await installGameCapture(page);
   await page.addInitScript(() => {
@@ -462,120 +286,37 @@ test('ignores an invalid legacy stage index and clears its key', async ({ page }
   expect(migratedState.legacyValue).toBeNull();
 });
 
-test('keeps upgraded player feet visually grounded', async ({ page }) => {
+test('takes one life and recovers in place when hit by an enemy with lives remaining', async ({ page }) => {
   await installGameCapture(page);
-
   await page.goto('/');
   const canvas = page.locator('canvas');
-  await expect(canvas).toHaveCount(1);
   await startGameAndWaitForPlayer(page, canvas);
 
-  const runtimeState = await page.evaluate(() => {
-    const game = (window as any).__capturedGame;
-    const scene = game?.scene.getScene('GameScene') as any;
-    if (!scene) throw new Error('GameScene is not available');
-    scene.applyPlayerState('big');
-    scene.player.setVelocity(0, 0);
-    const body = scene.player.body;
-    return {
-      displayHeight: scene.player.displayHeight,
-      bodyHeight: body.height,
-      bodyBottom: body.bottom,
-      visualBottom: scene.player.y + scene.player.displayHeight * (1 - scene.player.originY)
-    };
-  });
-
-  expect(runtimeState.displayHeight).toBe(84);
-  expect(runtimeState.bodyHeight).toBe(84);
-  expect(Math.abs(runtimeState.bodyBottom - runtimeState.visualBottom)).toBeLessThanOrEqual(1);
-
-  await page.waitForTimeout(300);
-  const screenshot = await canvas.screenshot();
-  const png = PNG.sync.read(screenshot);
-  const playerBounds = { x1: 40, y1: 400, x2: 125, y2: 520 };
-  const lowestShoeY = findLowestPixelY(png, playerBounds, isPlayerShoePixel);
-  const groundTopY = findFirstRowY(
-    png,
-    { x1: playerBounds.x1, y1: 465, x2: playerBounds.x2, y2: 540 },
-    8,
-    isGroundSurfacePixel
-  );
-
-  expect(lowestShoeY).not.toBeNull();
-  expect(groundTopY).not.toBeNull();
-  // antialias 有効化で靴・地面の境界が滲むため許容差を緩和（番人テストの意図=浮きの検出は維持）
-  expect(groundTopY! - lowestShoeY! - 1).toBeLessThanOrEqual(6);
-
-  const downgradedState = await page.evaluate(() => {
-    const game = (window as any).__capturedGame;
-    const scene = game?.scene.getScene('GameScene') as any;
-    if (!scene) throw new Error('GameScene is not available');
-    const beforeBottom = scene.player.body.bottom;
-    scene.applyPlayerState('small');
-    scene.player.setVelocity(0, 0);
-    const body = scene.player.body;
-    return {
-      beforeBottom,
-      displayHeight: scene.player.displayHeight,
-      bodyHeight: body.height,
-      bodyBottom: body.bottom,
-      visualBottom: scene.player.y + scene.player.displayHeight * (1 - scene.player.originY)
-    };
-  });
-
-  expect(downgradedState.displayHeight).toBe(56);
-  expect(downgradedState.bodyHeight).toBe(56);
-  expect(Math.abs(downgradedState.bodyBottom - downgradedState.beforeBottom)).toBeLessThanOrEqual(1);
-  expect(Math.abs(downgradedState.bodyBottom - downgradedState.visualBottom)).toBeLessThanOrEqual(1);
-
-  await page.waitForTimeout(300);
-  const downgradedScreenshot = await canvas.screenshot();
-  const downgradedPng = PNG.sync.read(downgradedScreenshot);
-  const downgradedPlayerBounds = { x1: 40, y1: 400, x2: 125, y2: 540 };
-  const downgradedLowestShoeY = findLowestPixelY(downgradedPng, downgradedPlayerBounds, isPlayerShoePixel);
-  const downgradedGroundTopY = findFirstRowY(
-    downgradedPng,
-    { x1: downgradedPlayerBounds.x1, y1: 465, x2: downgradedPlayerBounds.x2, y2: 540 },
-    8,
-    isGroundSurfacePixel
-  );
-
-  expect(downgradedLowestShoeY).not.toBeNull();
-  expect(downgradedGroundTopY).not.toBeNull();
-  // antialias 有効化で靴・地面の境界が滲むため許容差を緩和
-  expect(downgradedGroundTopY! - downgradedLowestShoeY! - 1).toBeLessThanOrEqual(6);
-
-  const damagedState = await page.evaluate(() => {
-    const game = (window as any).__capturedGame;
-    const scene = game?.scene.getScene('GameScene') as any;
-    if (!scene) throw new Error('GameScene is not available');
-
-    scene.applyPlayerState('big');
-    scene.player.setVelocity(0, 0);
-    const expectedGroundBottom = scene.player.body.bottom;
-    scene.player.setY(scene.player.y + 32);
-    scene.player.body.updateFromGameObject();
-    const embeddedBottom = scene.player.body.bottom;
-
+  // 強化アイテム廃止後の被弾モデル: 敵被弾でライフ -1 し、その場で復帰（ミス確定にしない）。
+  const result = await page.evaluate(() => {
+    const scene = (window as any).__capturedGame.scene.getScene('GameScene') as any;
+    const before = scene.lives;
     scene.handleMiss('enemy');
-    const body = scene.player.body;
-    return {
-      expectedGroundBottom,
-      embeddedBottom,
-      playerState: scene.playerState,
-      displayHeight: scene.player.displayHeight,
-      bodyHeight: body.height,
-      bodyBottom: body.bottom,
-      velocityY: body.velocity.y,
-      visualBottom: scene.player.y + scene.player.displayHeight * (1 - scene.player.originY)
-    };
+    return { before, after: scene.lives, isMissed: scene.isMissed };
   });
 
-  expect(damagedState.embeddedBottom - damagedState.expectedGroundBottom).toBeGreaterThanOrEqual(31);
-  expect(damagedState.playerState).toBe('small');
-  expect(damagedState.displayHeight).toBe(56);
-  expect(damagedState.bodyHeight).toBe(56);
-  expect(Math.abs(damagedState.bodyBottom - damagedState.expectedGroundBottom)).toBeLessThanOrEqual(1);
-  expect(Math.abs(damagedState.bodyBottom - damagedState.visualBottom)).toBeLessThanOrEqual(1);
-  expect(damagedState.velocityY).toBe(0);
+  expect(result.after).toBe(result.before - 1);
+  expect(result.isMissed).toBe(false);
+});
+
+test('the last life is fatal on enemy hit and triggers a miss', async ({ page }) => {
+  await installGameCapture(page);
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  await startGameAndWaitForPlayer(page, canvas);
+
+  // 境界仕様: 最後の 1 ライフ（lives=1）で敵被弾はその場復帰せず致命（ミス確定）。
+  const result = await page.evaluate(() => {
+    const scene = (window as any).__capturedGame.scene.getScene('GameScene') as any;
+    scene.lives = 1;
+    scene.handleMiss('enemy');
+    return { isMissed: scene.isMissed };
+  });
+
+  expect(result.isMissed).toBe(true);
 });

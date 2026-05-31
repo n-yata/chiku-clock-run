@@ -119,7 +119,7 @@
 
 - v0.2（実装済み）: 巻きネジ障害機 4 体（踏みつけ停止 / 段差端反転 AI）・歯車片 15 個・収集 HUD・ミス演出
 - モバイル操作改善（実装済み）: 横画面のみを対応対象とし、左ゾーン＝スライドで左右移動 / 右ゾーン＝タップでジャンプ。`pointer.id` によるマルチポインタ管理とピンチズーム無効化を維持する。portrait 端末は CSS 強制回転方式（`body.is-portrait #game { transform: rotate(90deg); }`）で横画面プレイ可能にする。`matchMedia('(orientation: portrait)')` の `change` イベントで `body.is-portrait` クラスを付与する（`orientationchange` 不使用）
-- v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE はジャンプ・歯車片取得・踏みつけ・ミス・ビーコン到達・能力取得等に対応
+- v0.3（実装済み）: BGM / SE — Web Audio API による完全プログラム合成。SE はジャンプ・着地・歯車片取得・踏みつけ・ミス・ビーコン到達に対応
 - v0.4（実装済み）: ステージ 2・3 追加・自動ステージ進行（フェードアウト遷移）
 - v0.5（実装済み）: タイトル画面（TitleScene）— SPACE / Enter / Tap でゲーム開始、全クリア後自動復帰
 - v0.6（実装済み）: 静的 PNG 導入。現在は地形に加え、生成済みの歯車片 / クロックビーコン PNG を Vite import 経由で読み込む

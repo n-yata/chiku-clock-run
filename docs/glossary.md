@@ -24,19 +24,17 @@
 | クロックビーコン | Clock Beacon | ステージ最終地点の時計型発信機。`'G'` タイルで指定。プレイヤーが触れるとクリア判定 |
 | 巻きネジ障害機 | Winder | ステージ内を徘徊する時計仕掛けの障害機。`'E'` タイルで配置 |
 | 歯車片 | Gear Bit | プレイヤーが触れると取得できる収集物。`'C'` タイルで配置 |
-| ぜんまい | Spring Coil | 取得するとプレイヤーが成長する能力アイテム。`'M'` タイルで配置 |
-| パルスコア | Pulse Core | 取得するとパルス弾を撃てる能力アイテム。`'F'` タイルで配置 |
-| クロノクリスタル | Chrono Crystal | 取得すると一定時間ダメージを無効化する能力アイテム。`'S'` タイルで配置 |
-| パルス弾 | Pulse Bolt | パルス能力中に発射でき、障害機を停止させる投射物 |
 | クリア | Clear | クロックビーコンに触れてステージを完了すること。クリア後は R キー / タッチでリスタート |
-| ミス | Miss | 敵に横・下から接触、または落下閾値（`FALL_THRESHOLD_Y`）を超えたときの失敗状態。スポーン位置へリセットされる |
+| 被弾 | Hit | 敵に横・下から接触すること。ライフが残っていればその場で 1 減らし短い無敵で復帰、ライフが尽きるとミス |
+| 無敵時間 | I-frame | 被弾直後の一定時間（`INVINCIBLE_MS`）プレイヤーが点滅し再被弾しない状態。`PowerUpManager` が管理 |
+| ミス | Miss | 敵被弾でライフが尽きる、または落下閾値（`FALL_THRESHOLD_Y`）を超えたときの失敗状態。ライフを 1 減らしステージを初期化、ライフ 0 でゲームオーバー |
 | 踏みつけ | Stomp | プレイヤーが敵の上から落下して当たること。敵を消滅させプレイヤーに反発速度を与える |
 | HUD | HUD | 画面上に常時表示される歯車片取得数等の情報。カメラスクロールに追従しない（`setScrollFactor(0)`）|
 | スコア | Score | 現行では歯車片取得数を表示する |
 | ローカル生成アセット | Generated Asset | 時計工房の意匠に合わせてスクリプトまたは Canvas ビルダーで再現可能に生成する画像・スプライト |
 | リスタート | Restart | ステージを初期状態に戻すこと。通常は `scene.restart()` を使い、障害再発時のみ全体リロードへ切り替えられる |
 | 落下 | Fall | プレイヤーの Y 座標が `FALL_THRESHOLD_Y` を超えた状態。ミスと同一フローでリセットされる |
-| タッチゾーン | Touch Zone | タッチ入力の画面領域区分。左側スライドで移動し、右側タップでジャンプ、能力中は右側ダブルタップで発射する |
+| タッチゾーン | Touch Zone | タッチ入力の画面領域区分。左側スライドで移動し、右側タップでジャンプする |
 | コヨーテタイム | Coyote Time | 崖から足を踏み外した直後（`COYOTE_TIME_MS` 以内）でもジャンプを受け付けるゲームフィール改善技術。空中にいても地面にいるとみなしてジャンプを許容する |
 | ジャンプバッファ | Jump Buffer | 着地直前（`JUMP_BUFFER_MS` 以内）のジャンプ入力を保持し、着地と同時に自動発火する技術。タイミングが合わなかったジャンプ操作をカバーする |
 | 可変ジャンプ | Variable Jump | ジャンプボタンを早く離すと低く、長押しすると高くなるジャンプ。上昇中にボタンを離すと `vy *= JUMP_CUT_MULTIPLIER` で上昇速度を減衰させ、`MIN_JUMP_VELOCITY` でクランプする |
@@ -52,7 +50,7 @@
 
 | 用語 | 英語 | 定義 |
 |------|------|------|
-| SE | Sound Effect | ゲーム内イベント（ジャンプ・歯車片取得・踏みつけ・ミス・ビーコン到達・能力取得）に対応する効果音。`AudioManager.playSe()` で再生 |
+| SE | Sound Effect | ゲーム内イベント（ジャンプ・着地・歯車片取得・踏みつけ・ミス・ビーコン到達）に対応する効果音。`AudioManager.playSe()` で再生 |
 | BGM | Background Music | ステージ中ループ再生されるバックグラウンドミュージック。16 ステップの矩形波アルペジオ。`AudioManager.startBgm()` / `stopBgm()` で制御 |
 | AudioManager | AudioManager | `src/audio/AudioManager.ts` に実装された音声合成クラス。Web Audio API を使い `OscillatorNode` / `GainNode` の短命グラフで SE と BGM を生成する。Phaser に非依存 |
 | AudioContext unlock | AudioContext unlock | iOS Safari では最初のユーザー入力イベントのコールスタック内で `AudioContext` を生成・resume しないと音が出ない制約がある。`AudioManager.unlock()` が最初のキー押下 / タップで呼ばれることでこの制約を回避する |
@@ -66,14 +64,14 @@
 | Phaser 3 | Phaser 3 | 本プロジェクトで採用している 2D ブラウザゲームエンジン。Scene / Physics / Input / Camera を提供 |
 | Arcade Physics | Arcade Physics | Phaser の軽量 AABB 物理エンジン。重力・速度・衝突判定を提供する |
 | シーン | Scene | Phaser の実行単位。本プロジェクトでは `BootScene`（読込・生成）、`TitleScene`（開始画面）、`GameScene`（ゲームランタイム）の 3 シーン構成 |
-| StaticGroup | StaticGroup | 物理的に動かない Sprite の集合（地面・歯車片・能力アイテム）。位置変更後は `refreshBody()` を呼ぶ必要がある |
+| StaticGroup | StaticGroup | 物理的に動かない Sprite の集合（地面・歯車片）。位置変更後は `refreshBody()` を呼ぶ必要がある |
 | Group | Group | 動的に動く Sprite の集合（敵）。毎フレーム物理演算が走る |
 | Overlap | Overlap | 物理的に停止させずに接触を検出する Phaser の仕組み。ビーコン判定・歯車片取得・障害機踏みつけに使用 |
 | Collider | Collider | 物理的な衝突応答を伴う Phaser の仕組み。プレイヤー・敵と地面の衝突に使用 |
 | groundMask | groundMask | ステージ全タイルの地面有無を `boolean[][]` で表したキャッシュ。敵 AI の段差端検出に O(1) で参照 |
 | StageDefinition | StageDefinition | ステージを表す TypeScript インターフェース。`id` / `cols` / `rows` / `tiles: string[]` を持つ |
 | BuiltStage | BuiltStage | `buildStage()` が `StageDefinition` から構築した実行時オブジェクト群（Phaser Sprite / Group / 座標情報）|
-| TileChar | TileChar | タイル文字の型定義。`'.' | '#' | 'P' | 'G' | 'E' | 'C' | 'M' | 'F' | 'S'` のユニオン型 |
+| TileChar | TileChar | タイル文字の型定義。`'.' | '#' | 'P' | 'G' | 'E' | 'C'` のユニオン型 |
 | Vite | Vite | フロントエンドビルドツール。HMR 付き開発サーバーと本番ビルド（TypeScript コンパイル含む）を提供 |
 | TypeScript | TypeScript | 本プロジェクトの実装言語（JavaScript の型付きスーパーセット）。v5.4 を使用 |
 

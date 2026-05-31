@@ -1,9 +1,7 @@
 import Phaser from 'phaser';
 import {
-  DOUBLE_TAP_MS,
   TOUCH_ZONE_SPLIT_RATIO,
-  TOUCH_SLIDE_THRESHOLD_PX_V2,
-  type PlayerState
+  TOUCH_SLIDE_THRESHOLD_PX_V2
 } from '../config/gameConfig';
 
 /**
@@ -13,14 +11,11 @@ import {
 export interface TouchHost {
   readonly isMissed: boolean;
   readonly isCleared: boolean;
-  readonly playerState: PlayerState;
   unlockAudio(): void;
-  shootPulseBolt(): void;
 }
 
 /**
- * タッチ操作（左ゾーン=スライド移動 / 右ゾーン=ジャンプ・ダブルタップ発射）を担当。
- * 既存 setupTouchControls / handlePointer* を移管し、仮想ボタンの視覚 FB を追加。
+ * タッチ操作（左ゾーン=スライド移動 / 右ゾーン=ジャンプ）を担当。
  */
 export class TouchController {
   private left = false;
@@ -30,7 +25,6 @@ export class TouchController {
   private jumpPointerId: number | null = null;
   private movePointerId: number | null = null;
   private touchMoveBaseX: number | null = null;
-  private lastTapRightAt = 0;
   private advanceTapRequested = false;
 
   constructor(private readonly scene: Phaser.Scene, private readonly host: TouchHost) {}
@@ -97,16 +91,7 @@ export class TouchController {
         this.right = false;
       }
     } else {
-      // 右ゾーン
-      const now = this.scene.time.now;
-      const isDoubleTap = (now - this.lastTapRightAt) <= DOUBLE_TAP_MS;
-      this.lastTapRightAt = now;
-
-      if (isDoubleTap && this.host.playerState === 'fire') {
-        this.host.shootPulseBolt();
-        return;
-      }
-
+      // 右ゾーン: ジャンプ
       if (this.jumpPointerId === null) {
         this.jumpPointerId = pointer.id;
         this.jumpRequested = true;

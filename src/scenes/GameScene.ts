@@ -3,51 +3,26 @@ import {
   ALL_CLEAR_TO_TITLE_DELAY_MS,
   ANIM_KEY,
   BGM_FADE_OUT_MS,
-  BIG_SCALE,
   GEAR_BIT_SPRITE_H,
   GEAR_BIT_SPRITE_W,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
   FALL_THRESHOLD_Y,
-  PULSE_BOLT_BODY_H,
-  PULSE_BOLT_BODY_W,
-  PULSE_BOLT_BOUNCE_COUNT,
-  PULSE_BOLT_BOUNCE_Y,
-  PULSE_BOLT_COOLDOWN_MS,
-  PULSE_BOLT_LIFETIME_MS,
-  PULSE_BOLT_MAX_COUNT,
-  PULSE_BOLT_SPEED_X,
-  PULSE_BOLT_SPEED_Y,
-  PULSE_BOLT_SPRITE_H,
-  PULSE_BOLT_SPRITE_W,
-  PULSE_CORE_SPRITE_H,
-  PULSE_CORE_SPRITE_W,
   GAME_OVER_TEXT,
   GAME_OVER_TO_TITLE_DELAY_MS,
   BEACON_SPRITE_H,
   BEACON_SPRITE_W,
-  HUD_PULSE_LABEL,
   INITIAL_LIVES,
   MAX_LIVES,
   MIN_LIVES,
   MISS_FLASH_COLOR,
   MISS_FLASH_MS,
-  SPRING_COIL_SPRITE_H,
-  SPRING_COIL_SPRITE_W,
-  PLAYER_FIRE_TINT,
+  PLAYER_HIT_KNOCKBACK_VY,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
   STAGE_CLEAR_DELAY_MS,
   STAGE_FADE_MS,
-  STAGE_PULSE_CORE_MAX,
-  STAGE_PULSE_CORE_MIN,
   STAGE_INDEX_STORAGE_KEY,
-  STAGE_SPRING_COIL_MAX,
-  STAGE_SPRING_COIL_MIN,
-  STAGE_CHRONO_CRYSTAL_MAX,
-  STAGE_CHRONO_CRYSTAL_MIN,
-  CHRONO_CRYSTAL_SPRITE_H,
-  CHRONO_CRYSTAL_SPRITE_W,
   STOMP_BOUNCE_VELOCITY,
   PLAYER_DEATH_BOUNCE_VY,
   PLAYER_DEATH_FALL_MS,
@@ -64,8 +39,7 @@ import {
   GAME_OVER_STROKE_THICKNESS,
   PROMPT_NEXT_TEXT,
   PROMPT_TITLE_TEXT,
-  HITSTOP_MS,
-  type PlayerState
+  HITSTOP_MS
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
 import { getStage, nextStageIndex, STAGES, type StageDefinition } from '../stages/index';
@@ -89,9 +63,6 @@ interface BuiltStage {
   gearBits: Phaser.Physics.Arcade.StaticGroup;
   gearBitTotal: number;
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;
-  springCoils: Phaser.Physics.Arcade.StaticGroup;
-  pulseCores: Phaser.Physics.Arcade.StaticGroup;
-  chronoCrystals: Phaser.Physics.Arcade.StaticGroup;
 }
 
 type EnemyDir = -1 | 1;
@@ -128,18 +99,11 @@ export class GameScene extends Phaser.Scene {
   private isAllCleared = false;
 
   private lives = INITIAL_LIVES;
-  private playerState: PlayerState = 'small';
-  private springCoils!: Phaser.Physics.Arcade.StaticGroup;
 
   private playerGroundCollider: Phaser.Physics.Arcade.Collider | null = null;
   private enemyManager!: EnemyManager;
   private powerUps!: PowerUpManager;
   private collisions!: CollisionHandler;
-  private pulseCores!: Phaser.Physics.Arcade.StaticGroup;
-  private chronoCrystals!: Phaser.Physics.Arcade.StaticGroup;
-  private pulseBolts!: Phaser.Physics.Arcade.Group;
-  private fireKey!: Phaser.Input.Keyboard.Key;
-  private fireCooldownUntil = 0;
   /** クリア / ゲームオーバー時の自動遷移を、タップ/キーで前倒しするためのワンショット。 */
   private pendingAdvance: (() => void) | null = null;
 
@@ -147,24 +111,17 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { stageIndex?: number; lives?: number; playerState?: PlayerState }): void {
+  init(data: { stageIndex?: number; lives?: number }): void {
     const resolved = getStage(data?.stageIndex ?? 0);
     this.stageIndex = resolved.index;
     this.stage = resolved.stage;
     const incomingLives = data?.lives ?? INITIAL_LIVES;
     this.lives = Math.min(MAX_LIVES, Math.max(MIN_LIVES, Number.isFinite(incomingLives) ? Math.floor(incomingLives) : INITIAL_LIVES));
-    const incoming = data?.playerState;
-    this.playerState = (incoming === 'small' || incoming === 'big' || incoming === 'fire')
-      ? incoming : 'small';
   }
 
   // --- E2E / 内部参照向けファサード（実体は PowerUpManager, D-004）---
   private get isInvincible(): boolean {
     return this.powerUps?.isInvincible ?? false;
-  }
-
-  get isChronoShielded(): boolean {
-    return this.powerUps?.isChronoShielded ?? false;
   }
 
   create(): void {
@@ -173,7 +130,6 @@ export class GameScene extends Phaser.Scene {
     this.isAllCleared = false;
     this.gearBitsCollected = 0;
     this.playerGroundCollider = null;
-    this.fireCooldownUntil = 0;
     this.pendingAdvance = null;
 
     const stage = this.stage;
@@ -189,9 +145,6 @@ export class GameScene extends Phaser.Scene {
     this.gearBits = built.gearBits;
     this.gearBitTotal = built.gearBitTotal;
     this.groundMask = built.groundMask;
-    this.springCoils = built.springCoils;
-    this.pulseCores = built.pulseCores;
-    this.chronoCrystals = built.chronoCrystals;
 
     // 遠景ベース（フラットな基調色。タイルの隙間や端を埋めて奥行きの土台にする）
     this.cameras.main.setBackgroundColor(BG_BASE_COLOR);
@@ -211,20 +164,8 @@ export class GameScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.playerSheet, 'idle');
     this.player.setCollideWorldBounds(false);
 
-    this.pulseBolts = this.physics.add.group({
-      defaultKey: TEX_KEY.pulseBolt,
-      maxSize: PULSE_BOLT_MAX_COUNT,
-      collideWorldBounds: false,
-      allowGravity: true,
-    });
-
     this.enemyManager = new EnemyManager(this, this.enemies, this.groundMask);
-    this.powerUps = new PowerUpManager(
-      this,
-      this.player,
-      this.groundMask,
-      () => this.applyPlayerState(this.playerState)
-    );
+    this.powerUps = new PowerUpManager(this, this.player);
 
     this.collisions = new CollisionHandler(this, this);
     this.playerGroundCollider = this.collisions.register(
@@ -233,21 +174,12 @@ export class GameScene extends Phaser.Scene {
         ground: built.ground,
         goal: built.goal,
         enemies: this.enemies,
-        gearBits: this.gearBits,
-        springCoils: this.springCoils,
-        pulseCores: this.pulseCores,
-        chronoCrystals: this.chronoCrystals,
-        pulseBolts: this.pulseBolts
+        gearBits: this.gearBits
       },
       {
         onGoalHit: this.onGoalHit,
         onEnemyOverlap: this.onEnemyOverlap,
-        onGearBitOverlap: this.onGearBitOverlap,
-        onSpringCoilOverlap: this.onSpringCoilOverlap,
-        onPulseCoreOverlap: this.onPulseCoreOverlap,
-        onChronoCrystalOverlap: this.onChronoCrystalOverlap,
-        onPulseBoltGroundCollide: this.onPulseBoltGroundCollide,
-        onPulseBoltEnemyOverlap: this.onPulseBoltEnemyOverlap
+        onGearBitOverlap: this.onGearBitOverlap
       }
     );
 
@@ -256,7 +188,6 @@ export class GameScene extends Phaser.Scene {
     }
     this.cursors = this.input.keyboard.createCursorKeys();
     this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-    this.fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
 
     this.camera = new CameraController(this, this.player, { w: worldWidth, h: worldHeight });
     this.camera.start();
@@ -268,7 +199,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.setLives(this.lives);
 
     this.particles = new ParticleManager(this);
-    // 敵撃破（踏み / クロノ接触 / パルス弾）で消滅バーストを出す。
+    // 敵撃破（踏みつけ）で消滅バーストを出す。
     this.events.on(GameEvents.EnemyKilled, (p: PointPayload) => {
       this.particles.burstEnemy(p.x, p.y);
     });
@@ -301,9 +232,7 @@ export class GameScene extends Phaser.Scene {
     const touchHost: TouchHost = {
       get isMissed() { return self.isMissed; },
       get isCleared() { return self.isCleared; },
-      get playerState() { return self.playerState; },
-      unlockAudio: () => self.audio.unlock(),
-      shootPulseBolt: () => self.tryShootPulseBolt()
+      unlockAudio: () => self.audio.unlock()
     };
     this.touch = new TouchController(this, touchHost);
     this.touch.start();
@@ -320,7 +249,8 @@ export class GameScene extends Phaser.Scene {
     registerAnimations(this);
     this.player.anims.play(ANIM_KEY.playerIdle, true);
 
-    this.applyPlayerState(this.playerState);
+    this.setupPlayerSize();
+    this.hud.showInstruction(INSTRUCTION_TEXT);
 
     this.camera.fadeIn(STAGE_FADE_MS);
   }
@@ -362,30 +292,6 @@ export class GameScene extends Phaser.Scene {
     };
     this.playerController.update(this.time.now, input);
 
-    // Z キーでパルス弾を投射
-    if (Phaser.Input.Keyboard.JustDown(this.fireKey)) {
-      this.tryShootPulseBolt();
-    }
-
-    // パルス弾寿命チェック
-    if (this.pulseBolts) {
-      this.pulseBolts.children.iterate((child) => {
-        const fb = child as Phaser.Physics.Arcade.Sprite;
-        if (!fb.active) return true;
-        const expireAt = (fb.getData('expireAt') as number) ?? 0;
-        if (this.time.now >= expireAt) {
-          this.destroyPulseBolt(fb);
-          return true;
-        }
-        const worldW = this.stage.cols * TILE_SIZE;
-        const worldH = this.stage.rows * TILE_SIZE;
-        if (fb.x < -TILE_SIZE || fb.x > worldW + TILE_SIZE || fb.y > worldH + TILE_SIZE) {
-          this.destroyPulseBolt(fb);
-        }
-        return true;
-      });
-    }
-
     this.enemyManager.update();
 
     this.camera.update();
@@ -407,9 +313,6 @@ export class GameScene extends Phaser.Scene {
     let goalRow = -1;
     const enemyPositions: Array<{ col: number; row: number }> = [];
     const gearBitPositions: Array<{ col: number; row: number }> = [];
-    const springCoilPositions: Array<{ col: number; row: number }> = [];
-    const pulseCorePositions: Array<{ col: number; row: number }> = [];
-    const chronoCrystalPositions: Array<{ col: number; row: number }> = [];
 
     for (let r = 0; r < def.rows; r++) {
       const line = def.tiles[r];
@@ -430,12 +333,6 @@ export class GameScene extends Phaser.Scene {
           enemyPositions.push({ col: c, row: r });
         } else if (ch === 'C') {
           gearBitPositions.push({ col: c, row: r });
-        } else if (ch === 'M') {
-          springCoilPositions.push({ col: c, row: r });
-        } else if (ch === 'F') {
-          pulseCorePositions.push({ col: c, row: r });
-        } else if (ch === 'S') {
-          chronoCrystalPositions.push({ col: c, row: r });
         } else if (ch !== '.' && ch !== '#') {
           throw new Error(`Stage ${def.id}: unknown tile '${ch}' at row ${r} col ${c}`);
         }
@@ -460,21 +357,6 @@ export class GameScene extends Phaser.Scene {
     if (gearBitPositions.length < 1 || gearBitPositions.length > 30) {
       throw new Error(
         `Stage ${def.id}: 'C' Gear Bit count must be 1..30 (got ${gearBitPositions.length})`
-      );
-    }
-    if (springCoilPositions.length < STAGE_SPRING_COIL_MIN || springCoilPositions.length > STAGE_SPRING_COIL_MAX) {
-      throw new Error(
-        `Stage ${def.id}: 'M' Spring Coil count must be ${STAGE_SPRING_COIL_MIN}..${STAGE_SPRING_COIL_MAX} (got ${springCoilPositions.length})`
-      );
-    }
-    if (pulseCorePositions.length < STAGE_PULSE_CORE_MIN || pulseCorePositions.length > STAGE_PULSE_CORE_MAX) {
-      throw new Error(
-        `Stage ${def.id}: 'F' Pulse Core count must be ${STAGE_PULSE_CORE_MIN}..${STAGE_PULSE_CORE_MAX} (got ${pulseCorePositions.length})`
-      );
-    }
-    if (chronoCrystalPositions.length < STAGE_CHRONO_CRYSTAL_MIN || chronoCrystalPositions.length > STAGE_CHRONO_CRYSTAL_MAX) {
-      throw new Error(
-        `Stage ${def.id}: 'S' Chrono Crystal count must be ${STAGE_CHRONO_CRYSTAL_MIN}..${STAGE_CHRONO_CRYSTAL_MAX} (got ${chronoCrystalPositions.length})`
       );
     }
     // 'E' は地面の真上に置かないと出現直後に落下するため、buildStage 段階で弾く
@@ -518,9 +400,6 @@ export class GameScene extends Phaser.Scene {
     const groundMask = this.buildGroundMask(def);
     const enemies = this.buildEnemies(enemyPositions);
     const gearBitPair = this.buildGearBits(gearBitPositions);
-    const springCoils = this.buildSpringCoils(springCoilPositions);
-    const pulseCores = this.buildPulseCores(pulseCorePositions);
-    const chronoCrystals = this.buildChronoCrystals(chronoCrystalPositions);
 
     return {
       ground,
@@ -529,9 +408,6 @@ export class GameScene extends Phaser.Scene {
       gearBits: gearBitPair.group,
       gearBitTotal: gearBitPair.total,
       groundMask,
-      springCoils,
-      pulseCores,
-      chronoCrystals,
       spawnX: spawnCol * TILE_SIZE + TILE_SIZE / 2,
       spawnY: (spawnRow + 1) * TILE_SIZE - PLAYER_SPRITE_H / 2
     };
@@ -581,48 +457,6 @@ export class GameScene extends Phaser.Scene {
     return { group, total: positions.length };
   }
 
-  private buildSpringCoils(
-    positions: Array<{ col: number; row: number }>
-  ): Phaser.Physics.Arcade.StaticGroup {
-    const group = this.physics.add.staticGroup();
-    for (const p of positions) {
-      const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
-      const cy = p.row * TILE_SIZE + TILE_SIZE / 2;
-      const springCoil = group.create(cx, cy, TEX_KEY.springCoil) as Phaser.Physics.Arcade.Sprite;
-      springCoil.setDisplaySize(SPRING_COIL_SPRITE_W, SPRING_COIL_SPRITE_H);
-      springCoil.refreshBody();
-    }
-    return group;
-  }
-
-  private buildPulseCores(
-    positions: Array<{ col: number; row: number }>
-  ): Phaser.Physics.Arcade.StaticGroup {
-    const group = this.physics.add.staticGroup();
-    for (const p of positions) {
-      const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
-      const cy = p.row * TILE_SIZE + TILE_SIZE / 2;
-      const pulseCore = group.create(cx, cy, TEX_KEY.pulseCore) as Phaser.Physics.Arcade.Sprite;
-      pulseCore.setDisplaySize(PULSE_CORE_SPRITE_W, PULSE_CORE_SPRITE_H);
-      pulseCore.refreshBody();
-    }
-    return group;
-  }
-
-  private buildChronoCrystals(
-    positions: Array<{ col: number; row: number }>
-  ): Phaser.Physics.Arcade.StaticGroup {
-    const group = this.physics.add.staticGroup();
-    for (const p of positions) {
-      const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
-      const cy = p.row * TILE_SIZE + TILE_SIZE / 2;
-      const chronoCrystal = group.create(cx, cy, TEX_KEY.chronoCrystal) as Phaser.Physics.Arcade.Sprite;
-      chronoCrystal.setDisplaySize(CHRONO_CRYSTAL_SPRITE_W, CHRONO_CRYSTAL_SPRITE_H);
-      chronoCrystal.refreshBody();
-    }
-    return group;
-  }
-
   private onGearBitOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, gearBit) => {
     if (this.isCleared || this.isMissed) return;
     const sprite = gearBit as Phaser.Physics.Arcade.Sprite;
@@ -641,12 +475,6 @@ export class GameScene extends Phaser.Scene {
     const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
     const eBody = eSprite.body as Phaser.Physics.Arcade.Body;
 
-    if (this.isChronoShielded) {
-      this.enemyManager.kill(eSprite);
-      this.audio.playSe('stomp');
-      return;
-    }
-
     const isStomp = pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
     if (isStomp) {
       this.enemyManager.kill(eSprite);
@@ -663,29 +491,18 @@ export class GameScene extends Phaser.Scene {
     if (this.isMissed || this.isCleared) return;
     if (this.isInvincible && reason === 'enemy') return;
 
-    if (reason === 'enemy') {
-      if (this.playerState === 'fire') {
-        this.applyPlayerState('big');
-        this.powerUps.snapToNearbyGround();
-        this.powerUps.startInvincible();
-        this.audio.playSe('stomp');
-        return;
-      }
-      if (this.playerState === 'big') {
-        this.applyPlayerState('small');
-        this.powerUps.snapToNearbyGround();
-        this.powerUps.startInvincible();
-        this.audio.playSe('stomp');
-        return;
-      }
+    // 敵被弾でまだライフが残る場合は、その場で 1 ライフ消費して無敵 + ノックバックで復帰する。
+    if (reason === 'enemy' && this.lives > MIN_LIVES + 1) {
+      this.lives -= 1;
+      this.hud.setLives(this.lives);
+      this.powerUps.startInvincible();
+      this.player.setVelocityY(PLAYER_HIT_KNOCKBACK_VY);
+      this.audio.playSe('miss');
+      return;
     }
 
-    // ミス確定（small + 敵 / 任意状態 + 落下）
+    // 致命（敵でライフが尽きる / 落下）。
     this.isMissed = true;
-    if (this.playerState !== 'small') {
-      this.applyPlayerState('small');
-    }
-    this.playerState = 'small';
     this.audio.playSe('miss');
 
     if (reason === 'enemy') {
@@ -708,7 +525,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.teardownPhysics();
-    this.scene.restart({ stageIndex: this.stageIndex, lives: this.lives, playerState: 'small' as PlayerState });
+    this.scene.restart({ stageIndex: this.stageIndex, lives: this.lives });
   }
 
   private onGoalHit = (): void => {
@@ -766,10 +583,6 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.colliders.destroy();
     if (this.gearBits) this.gearBits.clear(true, true);
     if (this.enemies) this.enemies.clear(true, true);
-    if (this.springCoils) this.springCoils.clear(true, true);
-    if (this.pulseCores) this.pulseCores.clear(true, true);
-    if (this.chronoCrystals) this.chronoCrystals.clear(true, true);
-    if (this.pulseBolts) this.pulseBolts.clear(true, true);
   }
 
   private transitionToStage(index: number): void {
@@ -781,7 +594,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.teardownPhysics();
-    this.scene.restart({ stageIndex: index, lives: this.lives, playerState: this.playerState });
+    this.scene.restart({ stageIndex: index, lives: this.lives });
   }
 
   private restartFromTop(): void {
@@ -795,15 +608,6 @@ export class GameScene extends Phaser.Scene {
     this.teardownPhysics();
     this.scene.start('TitleScene');
   }
-
-  private onSpringCoilOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, springCoil) => {
-    if (this.isCleared || this.isMissed) return;
-    (springCoil as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
-    this.audio.playSe('springCoil');
-    if (this.playerState === 'small') {
-      this.applyPlayerState('big');
-    }
-  };
 
   /**
    * スクワッシュ&ストレッチ（juice）。基準スケール（playerBaseScale*）から相対的に変形し、
@@ -826,76 +630,16 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private applyPlayerState(newState: PlayerState): void {
-    this.playerJuice?.stop(); // スケール juice を止めてから displaySize を確定させる
-    this.playerState = newState;
-    const isBig = newState === 'big' || newState === 'fire';
-    const w = isBig ? PLAYER_SPRITE_W * BIG_SCALE : PLAYER_SPRITE_W;
-    const h = isBig ? PLAYER_SPRITE_H * BIG_SCALE : PLAYER_SPRITE_H;
-    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
-    const bottom = body?.bottom ?? this.player.y + this.player.displayHeight * (1 - this.player.originY);
-    this.player.setDisplaySize(w, h);
-    // displaySize 由来の正規スケールを juice の基準として記録する。
+  /** プレイヤーの表示サイズ・物理ボディを通常サイズで確定し、juice の基準スケールを記録する。 */
+  private setupPlayerSize(): void {
+    this.playerJuice?.stop();
+    this.player.setDisplaySize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     this.playerBaseScaleX = this.player.scaleX;
     this.playerBaseScaleY = this.player.scaleY;
+    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
     body?.setSize(PLAYER_SPRITE_W, PLAYER_SPRITE_H);
     body?.updateFromGameObject();
-    this.setPlayerBodyBottom(bottom);
-    if (!this.isChronoShielded) {
-      if (newState === 'fire') {
-        this.player.setTint(PLAYER_FIRE_TINT);
-      } else {
-        this.player.clearTint();
-      }
-    }
-    this.hud?.showInstruction(newState === 'fire' ? HUD_PULSE_LABEL : INSTRUCTION_TEXT);
-  }
-
-  private setPlayerBodyBottom(bottom: number): void {
-    const body = this.player.body as Phaser.Physics.Arcade.Body | null;
-    if (body) {
-      this.player.setY(this.player.y + bottom - body.bottom);
-      body.updateFromGameObject();
-      return;
-    }
-    this.player.setY(bottom - this.player.displayHeight * (1 - this.player.originY));
-  }
-
-  private onPulseCoreOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_p, pulseCore) => {
-    if (this.isCleared || this.isMissed) return;
-    (pulseCore as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
-    this.audio.playSe('pulseCore');
-    this.applyPlayerState('fire');
-  };
-
-  private onChronoCrystalOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_p, chronoCrystal) => {
-    if (this.isCleared || this.isMissed) return;
-    (chronoCrystal as Phaser.Physics.Arcade.Sprite).disableBody(true, true);
-    this.audio.playSe('chronoCrystal');
-    this.powerUps.startChronoShield();
-  };
-
-  private tryShootPulseBolt(): void {
-    if (this.isCleared || this.isMissed) return;
-    if (this.playerState !== 'fire') return;
-    if (this.time.now < this.fireCooldownUntil) return;
-    const fb = this.pulseBolts.get(this.player.x, this.player.y, TEX_KEY.pulseBolt) as Phaser.Physics.Arcade.Sprite | null;
-    if (!fb) return;
-    fb.enableBody(true, this.player.x, this.player.y, true, true);
-    fb.setDisplaySize(PULSE_BOLT_SPRITE_W, PULSE_BOLT_SPRITE_H);
-    const body = fb.body as Phaser.Physics.Arcade.Body;
-    body.setSize(PULSE_BOLT_BODY_W, PULSE_BOLT_BODY_H);
-    body.setBounce(0, PULSE_BOLT_BOUNCE_Y);
-    const dir: 1 | -1 = this.player.flipX ? -1 : 1;
-    fb.setVelocity(dir * PULSE_BOLT_SPEED_X, PULSE_BOLT_SPEED_Y);
-    fb.setData('bounces', 0);
-    fb.setData('expireAt', this.time.now + PULSE_BOLT_LIFETIME_MS);
-    this.fireCooldownUntil = this.time.now + PULSE_BOLT_COOLDOWN_MS;
-    this.audio.playSe('pulseBolt');
-  }
-
-  private destroyPulseBolt(fb: Phaser.Physics.Arcade.Sprite): void {
-    fb.disableBody(true, true);
+    this.player.clearTint();
   }
 
   /** 敵踏み時のヒットストップ。物理のみ一時停止し、描画/音には波及させない（design §11）。 */
@@ -906,30 +650,6 @@ export class GameScene extends Phaser.Scene {
       this.physics.world.resume();
     });
   }
-
-  private onPulseBoltGroundCollide: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (fb, _ground) => {
-    const sprite = fb as Phaser.Physics.Arcade.Sprite;
-    const body = sprite.body as Phaser.Physics.Arcade.Body;
-    if (body.blocked.down) {
-      const bounces = ((sprite.getData('bounces') as number) ?? 0) + 1;
-      sprite.setData('bounces', bounces);
-      if (bounces > PULSE_BOLT_BOUNCE_COUNT) {
-        this.destroyPulseBolt(sprite);
-      }
-    } else if (body.blocked.left || body.blocked.right) {
-      this.destroyPulseBolt(sprite);
-    }
-  };
-
-  private onPulseBoltEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (fb, enemy) => {
-    const sprite = fb as Phaser.Physics.Arcade.Sprite;
-    const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
-    if (!sprite.active || !eSprite.active) return;
-    this.particles.burstPulse(sprite.x, sprite.y);
-    this.enemyManager.kill(eSprite);
-    this.destroyPulseBolt(sprite);
-    this.audio.playSe('stomp');
-  };
 
   private playPlayerDeathAnimation(): void {
     this.playerGroundCollider?.destroy();

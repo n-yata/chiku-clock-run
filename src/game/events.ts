@@ -10,10 +10,6 @@ export const GameEvents = {
   EnemyKilled: 'enemy:killed',
   /** 歯車片取得。payload: 取得座標 {x,y}。 */
   GearCollected: 'gear:collected',
-  /** プレイヤー状態変化。payload: PlayerState。 */
-  StateChanged: 'state:changed',
-  /** パルス弾命中。payload: 命中座標 {x,y}。 */
-  PulseHit: 'pulse:hit',
   /** ゴール到達。payload: ゴール座標 {x,y}。 */
   Goal: 'goal'
 } as const;

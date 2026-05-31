@@ -4,7 +4,6 @@ import {
   PARTICLE_GEAR,
   PARTICLE_ENEMY,
   PARTICLE_DUST,
-  PARTICLE_PULSE,
   PARTICLE_CELEBRATE
 } from '../config/gameConfig';
 
@@ -38,11 +37,6 @@ export class ParticleManager {
   /** 着地土煙。地面に沿って横へ広がるよう重力を弱める。 */
   dust(x: number, y: number): void {
     this.burst(x, y, PARTICLE_DUST, { gravityY: 120, angleMin: 200, angleMax: 340 });
-  }
-
-  /** パルス弾衝突バースト。 */
-  burstPulse(x: number, y: number): void {
-    this.burst(x, y, PARTICLE_PULSE);
   }
 
   /** クリア星バースト（上方向に華やかに散る）。 */

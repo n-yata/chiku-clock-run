@@ -26,7 +26,7 @@ chiku-clock-run/
 │   │   ├── TouchController.ts    # タッチ入力（スライド移動・仮想ボタン・前倒しタップ）
 │   │   ├── PlayerController.ts   # プレイヤー移動・ジャンプ・コヨーテ・バッファ・可変ジャンプ
 │   │   ├── EnemyManager.ts       # 敵 AI・壁反転・段差端反転・撃破アニメーション
-│   │   ├── PowerUpManager.ts     # 無敵・クロノシールド・プレイヤースナップ
+│   │   ├── PowerUpManager.ts     # 被弾後の無敵（i-frame・点滅）
 │   │   └── CollisionHandler.ts   # overlap/collider 登録の一元管理
 │   └── stages/                   # ステージデータ
 │       ├── index.ts              # STAGES 配列・getStage / nextStageIndex ユーティリティ
@@ -76,16 +76,16 @@ chiku-clock-run/
 | ディレクトリ / ファイル | 役割 |
 |----------------------|------|
 | `src/main.ts` | `Phaser.Game` 起動。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| `src/audio/AudioManager.ts` | Web Audio API による歯車片取得・ビーコン到達・能力取得を含む SE と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応 |
+| `src/audio/AudioManager.ts` | Web Audio API による歯車片取得・ビーコン到達等の SE と BGM ループの合成・再生。`unlock()` で iOS Safari の AudioContext 制約に対応 |
 | `src/scenes/BootScene.ts` | Canvas API で `buildPlayerSheet` / `buildEnemySheet` を呼びスプライトシートを生成後、通常起動は `TitleScene`、リロードフォールバック時は `GameScene` へ遷移 |
 | `src/scenes/TitleScene.ts` | タイトルテキスト + 「Press SPACE / Tap to Start」プロンプト（点滅）を表示。SPACE / Enter / タップで `GameScene` へ遷移。`Scale.RESIZE` 対応の `layout()` で中央配置を維持。全クリア後の自動遷移先 |
-| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 能力アイテム / ビーコン Overlap / AudioManager 統合 |
+| `src/scenes/GameScene.ts` | ステージ構築 / プレイヤー操作 / カメラ追従 / 巻きネジ障害機 AI / 歯車片取得 / 被弾・ライフ / ビーコン Overlap / AudioManager 統合 |
 | `src/scenes/spriteSheets.ts` | `document.createElement('canvas')` + `textures.addCanvas` でプレイヤー（4F: idle/walk1/walk2/jump）・敵（2F: walk1/walk2）のスプライトシートを生成。`buildParticleTexture` で `particle_dot`（6px 白円）も生成する。`textures.exists` による冪等チェック付き |
 | `src/game/` | GameScene から分離した 8 マネージャクラス。それぞれ `Phaser.Scene` を継承しないプレーンクラスで、コンストラクタで `scene` を受け取る |
 | `src/game/events.ts` | `GameEvents` 文字列定数（`player:land` / `enemy:killed` / `gear:collected` 等）+ payload 型。マネージャ間の疎結合連携に使用 |
 | `src/scenes/animations.ts` | `registerAnimations(scene)` で `player_idle` / `player_walk` / `player_jump` / `enemy_walk` を Phaser アニメーションマネージャに登録。`anims.exists` による冪等チェック付き |
-| `src/config/gameConfig.ts` | 物理・障害機 / 歯車片 / 能力アイテム・HUD・SE/BGM・寸法・テクスチャキーの単一集約点 |
-| `src/stages/stage01.ts` | 1 ステージ分のタイル定義。`'E'` は巻きネジ障害機、`'C'` は歯車片、`'M'` / `'F'` / `'S'` は能力アイテム |
+| `src/config/gameConfig.ts` | 物理・障害機 / 歯車片・HUD・SE/BGM・寸法・テクスチャキーの単一集約点 |
+| `src/stages/stage01.ts` | 1 ステージ分のタイル定義。`'E'` は巻きネジ障害機、`'C'` は歯車片 |
 | `src/stages/stageValidation.ts` | `criticalPath` の床上クリアランスと、ステージ順の難易度 metrics をテスト用に検証 |
 | `index.html` | Vite エントリ HTML。CSP `<meta>` で `default-src 'self'` 系を設定。Phaser Loader 用に `img-src` は `blob:` を許可 |
 | `scripts/generate-icons.mjs` | Node.js 標準ライブラリのみで時計文字盤 / 歯車モチーフの PWA アイコンと小型ゲーム PNG を決定的に生成 |

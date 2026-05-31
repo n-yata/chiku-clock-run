@@ -7,10 +7,6 @@ export interface CollisionTargets {
   goal: Phaser.Physics.Arcade.Sprite;
   enemies: Phaser.Physics.Arcade.Group;
   gearBits: Phaser.Physics.Arcade.StaticGroup;
-  springCoils: Phaser.Physics.Arcade.StaticGroup;
-  pulseCores: Phaser.Physics.Arcade.StaticGroup;
-  chronoCrystals: Phaser.Physics.Arcade.StaticGroup;
-  pulseBolts: Phaser.Physics.Arcade.Group;
 }
 
 /** overlap/collider のコールバック群（本体は GameScene 側ファサードに残す, D-004）。 */
@@ -18,11 +14,6 @@ export interface CollisionHandlers {
   onGoalHit: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
   onEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
   onGearBitOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
-  onSpringCoilOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
-  onPulseCoreOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
-  onChronoCrystalOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
-  onPulseBoltGroundCollide: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
-  onPulseBoltEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 }
 
 /**
@@ -49,11 +40,6 @@ export class CollisionHandler {
     physics.add.overlap(t.player, t.goal, h.onGoalHit, undefined, this.context);
     physics.add.overlap(t.player, t.enemies, h.onEnemyOverlap, undefined, this.context);
     physics.add.overlap(t.player, t.gearBits, h.onGearBitOverlap, undefined, this.context);
-    physics.add.overlap(t.player, t.springCoils, h.onSpringCoilOverlap, undefined, this.context);
-    physics.add.overlap(t.player, t.pulseCores, h.onPulseCoreOverlap, undefined, this.context);
-    physics.add.overlap(t.player, t.chronoCrystals, h.onChronoCrystalOverlap, undefined, this.context);
-    physics.add.collider(t.pulseBolts, t.ground, h.onPulseBoltGroundCollide, undefined, this.context);
-    physics.add.overlap(t.pulseBolts, t.enemies, h.onPulseBoltEnemyOverlap, undefined, this.context);
 
     return playerGroundCollider;
   }

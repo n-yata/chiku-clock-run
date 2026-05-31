@@ -7,10 +7,6 @@ import {
 import {
   buildPlayerSheet,
   buildEnemySheet,
-  buildSpringCoilSheet,
-  buildPulseCoreSheet,
-  buildChronoCrystalSheet,
-  buildPulseBoltSheet,
   buildParticleTexture,
   buildBackgroundTile,
   buildBackgroundOverlay
@@ -46,10 +42,6 @@ export class BootScene extends Phaser.Scene {
 
     buildPlayerSheet(this);
     buildEnemySheet(this);
-    buildSpringCoilSheet(this);
-    buildPulseCoreSheet(this);
-    buildChronoCrystalSheet(this);
-    buildPulseBoltSheet(this);
     buildParticleTexture(this);
     buildBackgroundTile(this);
     buildBackgroundOverlay(this);

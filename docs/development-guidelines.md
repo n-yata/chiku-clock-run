@@ -179,13 +179,13 @@ spawnY = (spawnRow + 1) * TILE_SIZE - PLAYER_SPRITE_H / 2
 beaconY = (goalRow + 1) * TILE_SIZE - BEACON_SPRITE_H / 2
 ```
 
-これにより `'P'` / `'G'` タイルの意味は「スプライトの足元が乗るセル」に統一される。レベル設計時は、以下の最大プレイヤー用クリアランス規約を併せて守る。
+これにより `'P'` / `'G'` タイルの意味は「スプライトの足元が乗るセル」に統一される。レベル設計時は、以下のクリアランス規約を併せて守る。
 
-#### 必須ルートは最大プレイヤー用に床上 3 タイルを空ける
+#### 必須ルートは床上 3 タイルを空ける
 
-**背景:** `big` / `fire` 状態は `PLAYER_SPRITE_H * BIG_SCALE = 56 * 1.5 = 84px` となる。`TILE_SIZE = 32px` では床上 3 タイル分の空間がなければ、能力取得後に低天井へ詰まる。
+**背景:** ジャンプ・段差越えの余裕を確保し、低天井で進行不能になる事故を防ぐためのレベル設計マージン（`MAX_PLAYER_CLEARANCE_TILES = 3`）。
 
-**対処:** 各 `StageDefinition` に `criticalPath` を宣言し、必須ルートの支持床直上 3 タイル内へ `#` を配置しない。加えて `P` タイルの左右 1 セルを空け、能力状態を維持した遷移後の最大横幅 body が地形へ食い込まないようにする。`src/stages/stageValidation.ts` の `validateCriticalPathClearance()` を Playwright から実行し、マップ変更時に閉塞を検出する。
+**対処:** 各 `StageDefinition` に `criticalPath` を宣言し、必須ルートの支持床直上 3 タイル内へ `#` を配置しない。加えて `P` タイルの左右 1 セルを空け、スポーン / ステージ遷移直後に body が地形へ食い込まないようにする。`src/stages/stageValidation.ts` の `validateCriticalPathClearance()` を Playwright から実行し、マップ変更時に閉塞を検出する。
 
 #### ステージ難易度は契約値で単調増加を検証する
 
@@ -219,7 +219,7 @@ beaconY = (goalRow + 1) * TILE_SIZE - BEACON_SPRITE_H / 2
 
 #### 表示サイズ変更後の body は未スケール寸法で設定する
 
-**背景:** `setDisplaySize()` は Game Object の scale を変更する。直後に `body.setSize(displayWidth, displayHeight)` を呼ぶと Arcade Physics 側で scale が再適用され、big 状態の body が表示より大きくなり、接地位置がずれる。
+**背景:** `setDisplaySize()` は Game Object の scale を変更する。直後に `body.setSize(displayWidth, displayHeight)` を呼ぶと Arcade Physics 側で scale が再適用され、body が表示より大きくなり、接地位置がずれる。
 
 **対処:** プレイヤーの body サイズは `PLAYER_SPRITE_W` / `PLAYER_SPRITE_H` のような未スケール寸法で設定する。表示倍率は `setDisplaySize()` に集約し、body 下端と visual 下端の一致を E2E で検証する。
 
@@ -251,7 +251,7 @@ if (!groundMask[probeRow]?.[probeCol]) { /* 反転 */ }
 
 #### タッチ操作はゾーン分割方式（画面左側スライド移動 / 右側タップジャンプ）
 
-現在は左側のスライドで移動し、右側のタップでジャンプする。パルス能力中は右側のダブルタップでパルス弾を発射する。操作方式を変更する場合は関連定数と E2E を併せて更新する。
+現在は左側のスライドで移動し、右側のタップでジャンプする。操作方式を変更する場合は関連定数と E2E を併せて更新する。
 
 #### モバイルの横画面化は CSS 回転方式で実装する
 
@@ -260,7 +260,7 @@ if (!groundMask[probeRow]?.[probeCol]) { /* 反転 */ }
 
 #### E2E ファサードは GameScene に必ず残す
 
-`tests/e2e/game-visual.spec.ts` は `scene.applyPlayerState()` / `scene.handleMiss()` / `scene.player` / `scene.playerState` / `scene.lives` / `scene.isChronoShielded` / `scene.isCleared` / `scene.stageIndex` 等を直接参照する。これらは E2E の実行基盤であり、マネージャへ責務を移管しても GameScene 上に薄い委譲ファサードとして残すこと。ファサードを除去するとテストが全滅する。
+`tests/e2e/game-visual.spec.ts` は `scene.handleMiss()` / `scene.player` / `scene.lives` / `scene.isMissed` / `scene.isCleared` / `scene.stageIndex` / `scene.enemies` 等を直接参照する。これらは E2E の実行基盤であり、マネージャへ責務を移管しても GameScene 上に薄い委譲ファサードとして残すこと。ファサードを除去するとテストが全滅する。
 
 #### 新規 SE キーの追加手順
 
@@ -275,7 +275,7 @@ GameScene の肥大化を防ぐため、責務は `src/game/` 配下のプレー
 - マネージャは `Phaser.Scene` を継承しない。コンストラクタで `scene: Phaser.Scene` を受け取る
 - マネージャ間の連携は `scene.events.emit/on` + `GameEvents` 文字列定数で疎結合化する
 - `update()` と `destroy()` を持つ場合は GameScene から委譲呼び出しする
-- E2E が間接検証する挙動（遷移・ミス・能力変化）のハンドラ本体は GameScene に残し、マネージャには参照だけを渡す
+- E2E が間接検証する挙動（遷移・ミス・被弾）のハンドラ本体は GameScene に残し、マネージャには参照だけを渡す
 
 #### HUD テキストは setScrollFactor(0) でカメラ固定
 
@@ -300,7 +300,7 @@ GameScene の肥大化を防ぐため、責務は `src/game/` 配下のプレー
 
 #### スプライトの squash & stretch は yoyo で原スケールへ復帰させる
 
-スクワッシュ&ストレッチ（ジャンプ伸び・着地つぶれ）は `scaleX/scaleY` の tween で表現するが、プレイヤーのサイズ状態は `setDisplaySize()`（= スケール）で管理し、E2E も `displayHeight` を検証する。juice の tween は必ず `yoyo: true` で原スケールへ戻し、状態変更（`setDisplaySize` 呼び出し）の直前に `tween.stop()` する。これで displaySize 依存の状態管理・E2E 契約を壊さずに演出を足せる。
+スクワッシュ&ストレッチ（ジャンプ伸び・着地つぶれ）は `scaleX/scaleY` の tween で表現するが、プレイヤーの表示サイズは `setDisplaySize()`（= スケール）で確定し、E2E も `displayHeight` を検証する。juice の tween は基準スケール（`playerBaseScale*`）から相対変形し、開始前に必ず基準へリセット + `yoyo: true` で基準へ戻す。`setDisplaySize` 呼び出し（`setupPlayerSize`）の直前にも `tween.stop()` する。これで途中停止の残差が累積して潰れるバグを防ぎ、displaySize 依存・E2E 契約を壊さずに演出を足せる。
 
 #### WebGL 描画の目視確認は canvas.screenshot() を使う
 

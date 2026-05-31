@@ -12,7 +12,7 @@ import {
   type SeWaveform
 } from '../config/gameConfig';
 
-export type SeKey = 'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon' | 'springCoil' | 'pulseCore' | 'pulseBolt' | 'chronoCrystal';
+export type SeKey = 'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon';
 
 export class AudioManager {
   private ctx: AudioContext | null = null;

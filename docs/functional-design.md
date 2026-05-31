@@ -99,7 +99,7 @@ sequenceDiagram
 | コンポーネント | ファイル | 責務 |
 |-------------|---------|------|
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
-| BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・能力アイテムの Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
+| BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・背景の Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
 | TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
 | GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する |
 | マネージャ群 | `src/game/` | `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler` の 8 クラス。プレーンクラス（Scene 非継承）として scene を受け取り責務を実行する |
@@ -158,7 +158,7 @@ interface StageDefinition {
 }
 ```
 
-`criticalPath` の各区間は `supportRow` の床上を歩く必須ルートを表す。`big` / `fire` の高さは 84px のため、支持床の直上 3 タイルに `#` がないことを `validateCriticalPathClearance()` で検証する。同時に `P` タイル左右 1 セルに `#` がないことを確認し、能力状態を保持したステージ遷移でも最大横幅の body が安全に出現できるようにする。
+`criticalPath` の各区間は `supportRow` の床上を歩く必須ルートを表す。プレイヤーが詰まらないよう支持床の直上 3 タイルに `#` がないことを `validateCriticalPathClearance()` で検証する。同時に `P` タイル左右 1 セルに `#` がないことを確認し、スポーン / ステージ遷移直後に body が地形へ食い込まないようにする。
 
 難易度は `measureStageDifficulty()` が `enemyCount + groundGapCount * 2 + elevatedSegmentCount * 2` を算出する。`elevatedSegmentCount` は宣言区間数ではなく、主床より上のタイル表面から導出する。`validateDifficultyProgression()` は役割 `intro` / `intermediate` / `final` と score の Stage 01 から Stage 03 への厳密増加を確認する。
 
@@ -172,9 +172,6 @@ interface StageDefinition {
 | `G` | ゴール | 1 ステージに 1 個 |
 | `E` | 敵スポーン | 1〜8 個・真下が `#` 必須 |
 | `C` | 歯車片 | 1〜30 個 |
-| `M` | ぜんまい | 0〜5 個 |
-| `F` | パルスコア | 0〜3 個 |
-| `S` | クロノクリスタル | 0〜2 個 |
 
 #### BuiltStage（buildStage() 生成物）
 
@@ -272,7 +269,7 @@ stateDiagram-v2
 ```
 
 - 左ゾーンのスライド距離が `TOUCH_SLIDE_THRESHOLD_PX` を超えると `touchLeft` / `touchRight` をセットする
-- 右ゾーンのタップでジャンプを要求し、`fire` 状態では右ダブルタップでパルス弾を発射する
+- 右ゾーンのタップでジャンプを要求する
 - `pointerupoutside` も `pointerup` と同一ハンドラで処理
 
 ### 対応画面向き
@@ -311,9 +308,9 @@ Overlap の登録順:
 |------|------|------|
 | リスタート方式 | 通常は `scene.restart()` で同一ステージまたは次ステージへ遷移する。床貫通問題が再発した場合のみ `USE_HARD_RELOAD_FALLBACK = true` で `window.location.reload()` 経路へ切り替える | フォールバック定数で切替可能 |
 | `StageDefinition.tiles` 文字列配列 | ステージ追加時は `src/stages/` にファイルを追加するだけ。既存 `GameScene.buildStage()` は `StageDefinition` 型を受け取るため変更不要 | 型で保証 |
-| 拡大状態の通路閉塞 | 能力物取得後の高さ 84px のプレイヤーが低天井で進行不能になり得る | `criticalPath` と床上 3 タイル検証を Playwright で実行 |
+| 通路の閉塞 | 低天井でプレイヤーが進行不能になり得る | `criticalPath` と床上 3 タイル検証を Playwright で実行 |
 | ステージ間の難易度差 | 地形変更で難易度が逆転または同等化し得る | 敵数・ギャップ数・高所区間数による score の厳密増加を検証 |
-| 時計工房アセット | 静的画像は `BootScene.preload()` の `load.image()`、アニメーション・能力スプライトは Canvas ビルダーを使用する | `TEX_KEY` 定数で抽象化 |
+| 時計工房アセット | 静的画像は `BootScene.preload()` の `load.image()`、キャラ・敵・背景スプライトは Canvas ビルダーを使用する | `TEX_KEY` 定数で抽象化 |
 
 ---
 
