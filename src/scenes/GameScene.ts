@@ -353,9 +353,9 @@ export class GameScene extends Phaser.Scene {
         `Stage ${def.id}: spawn col ${spawnCol} must be within left third (< ${Math.floor(def.cols / 3)})`
       );
     }
-    if (enemyPositions.length < 1 || enemyPositions.length > 8) {
+    if (enemyPositions.length < 1 || enemyPositions.length > 14) {
       throw new Error(
-        `Stage ${def.id}: 'E' count must be 1..8 (got ${enemyPositions.length})`
+        `Stage ${def.id}: 'E' count must be 1..14 (got ${enemyPositions.length})`
       );
     }
     if (gearBitPositions.length < 1 || gearBitPositions.length > 30) {
