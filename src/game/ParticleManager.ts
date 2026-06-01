@@ -4,7 +4,8 @@ import {
   PARTICLE_GEAR,
   PARTICLE_ENEMY,
   PARTICLE_DUST,
-  PARTICLE_CELEBRATE
+  PARTICLE_CELEBRATE,
+  PARTICLE_EXPLODE
 } from '../config/gameConfig';
 
 interface BurstConfig {
@@ -42,6 +43,11 @@ export class ParticleManager {
   /** クリア星バースト（上方向に華やかに散る）。 */
   celebrate(x: number, y: number): void {
     this.burst(x, y, PARTICLE_CELEBRATE, { gravityY: 260 });
+  }
+
+  /** チクタク爆弾の自爆バースト（全方位に砕ける）。 */
+  burstExplosion(x: number, y: number): void {
+    this.burst(x, y, PARTICLE_EXPLODE, { gravityY: 200 });
   }
 
   private burst(

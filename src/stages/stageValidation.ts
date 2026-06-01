@@ -103,7 +103,8 @@ export function validateCriticalPathClearance(stage: StageDefinition): string[] 
 
 export function measureStageDifficulty(stage: StageDefinition): StageDifficultyMetrics {
   const baseRow = primarySupportRow(stage);
-  const enemyCount = countTiles(stage, 'E');
+  // 敵カウントは 3 種すべて（'E'=巻きネジ機 / 'F'=時計トンボ / 'B'=チクタク爆弾）を合算する。
+  const enemyCount = countTiles(stage, 'E') + countTiles(stage, 'F') + countTiles(stage, 'B');
   const groundGapCount = countGroundGaps(stage, baseRow);
   const elevatedSegmentCount = countElevatedSurfaceSegments(stage, baseRow);
   return {

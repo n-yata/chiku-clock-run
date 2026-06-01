@@ -39,6 +39,10 @@ export const TEX_KEY = {
   ground: 'ground',
   beacon: 'beacon',
   enemySheet: 'enemy_sheet',
+  /** 時計トンボ（飛行敵）のスプライトシート。 */
+  flyerSheet: 'flyer_sheet',
+  /** チクタク爆弾（追尾自爆敵）のスプライトシート。 */
+  bombSheet: 'bomb_sheet',
   gearBit: 'gear_bit',
   /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
   particle: 'particle_dot',
@@ -52,7 +56,13 @@ export const ANIM_KEY = {
   playerIdle: 'player_idle',
   playerWalk: 'player_walk',
   playerJump: 'player_jump',
-  winderWalk: 'winder_walk'
+  winderWalk: 'winder_walk',
+  /** 時計トンボの羽ばたき。 */
+  flyerFly: 'flyer_fly',
+  /** チクタク爆弾の通常（鎮座）。 */
+  bombIdle: 'bomb_idle',
+  /** チクタク爆弾の導火テレグラフ（点滅）。 */
+  bombTick: 'bomb_tick'
 } as const;
 
 export const PLAYER_ANIM_WALK_FPS = 12;
@@ -75,6 +85,61 @@ export const ENEMY_DARK_COLOR = 0x5a3818;
 export const ENEMY_ACCENT_COLOR = 0x5ecabc;
 export const ENEMY_SPEED = 60;
 export const STOMP_BOUNCE_VELOCITY = -280;
+/** 1 ステージに配置できる敵（'E'+'F'+'B'）の合計上限。 */
+export const MAX_ENEMIES_PER_STAGE = 20;
+
+// --- 20260601-enemy-types: 時計トンボ（飛行敵） ---
+export const FLYER_SPRITE_W = 48;
+export const FLYER_SPRITE_H = 40;
+/** 真鍮の胴体。 */
+export const FLYER_BODY_COLOR = 0xc9973a;
+export const FLYER_BODY_DARK_COLOR = 0x7a5420;
+/** 半透明ティールの歯車羽。 */
+export const FLYER_WING_COLOR = 0x8ed4d8;
+/** 文字盤胸部。 */
+export const FLYER_FACE_COLOR = 0xfff6e0;
+/** 水平巡回速度 (px/s)。 */
+export const FLYER_SPEED = 70;
+/** 上下サイン揺れの振幅 (px)。 */
+export const FLYER_BOB_AMP_PX = 26;
+/** 上下サイン揺れの角速度 (rad/ms)。 */
+export const FLYER_BOB_OMEGA = 0.005;
+/** 上下サイン揺れ目標への追従ゲイン（P 制御係数 1/s）。 */
+export const FLYER_BOB_K = 8;
+/** スポーン X を中心とした水平巡回の片側範囲 (px)。 */
+export const FLYER_PATROL_HALF_PX = 96;
+/** 羽ばたきアニメの FPS。 */
+export const FLYER_ANIM_FPS = 12;
+
+// --- 20260601-enemy-types: チクタク爆弾（追尾自爆敵） ---
+export const BOMB_SPRITE_W = 40;
+export const BOMB_SPRITE_H = 40;
+/** 暗金属の球体。 */
+export const BOMB_BODY_COLOR = 0x3b3340;
+export const BOMB_BODY_DARK_COLOR = 0x1f1a24;
+/** 前面の文字盤（idle）。 */
+export const BOMB_FACE_COLOR = 0xfff6e0;
+/** 導火・点灯（tick）の赤。 */
+export const BOMB_TICK_COLOR = 0xff4530;
+/** 火花・真鍮の差し色。 */
+export const BOMB_SPARK_COLOR = 0xffd24a;
+/** 追尾速度 (px/s)。巻きネジ機より速い。 */
+export const BOMB_SPEED = 120;
+/** プレイヤーを検知して追尾を開始する水平距離 (px)。 */
+export const BOMB_DETECT_PX = 192;
+/** 追尾を開始する垂直許容距離 (px)。 */
+export const BOMB_DETECT_Y_PX = 80;
+/** 至近距離で導火を開始する水平距離 (px)。 */
+export const BOMB_FUSE_TRIGGER_PX = 44;
+/** 導火開始から自爆までの時間 (ms)。 */
+export const BOMB_FUSE_MS = 650;
+/** 自爆の爆風半径 (px)。この範囲内のプレイヤーが被弾する。 */
+export const BOMB_BLAST_RADIUS_PX = 72;
+/** 導火点滅アニメの FPS。 */
+export const BOMB_TICK_FPS = 10;
+/** 自爆時の画面シェイク継続時間 (ms) と強度。 */
+export const BOMB_SHAKE_MS = 180;
+export const BOMB_SHAKE_INTENSITY = 0.012;
 
 // --- v0.2: 歯車片 (Gear Bit) ---
 export const GEAR_BIT_SPRITE_W = 32;
@@ -130,7 +195,7 @@ export interface SeDefinition {
 export const AUDIO_MASTER_GAIN = 0.5;
 export const AUDIO_BGM_GAIN = 0.6;
 
-export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon', SeDefinition> = {
+export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 'beacon' | 'explode', SeDefinition> = {
   jump: {
     steps: [
       { freqStart: 440, freqEnd: 880, durationSec: 0.12, attackSec: 0.005, peakGain: 0.3, waveform: 'square', offsetSec: 0 }
@@ -164,6 +229,13 @@ export const SE_PARAMS: Record<'jump' | 'land' | 'gearBit' | 'stomp' | 'miss' | 
       { freqStart: 659,  freqEnd: 659,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.15 },
       { freqStart: 784,  freqEnd: 784,  durationSec: 0.15, attackSec: 0.005, peakGain: 0.35, waveform: 'square', offsetSec: 0.30 },
       { freqStart: 1047, freqEnd: 1047, durationSec: 0.20, attackSec: 0.005, peakGain: 0.40, waveform: 'square', offsetSec: 0.45 }
+    ]
+  },
+  explode: {
+    // 低音の破裂 + ノイズ感のある下降。鋸波で「ドンッ」と砕ける自爆音。
+    steps: [
+      { freqStart: 180, freqEnd: 40,  durationSec: 0.28, attackSec: 0.002, peakGain: 0.45, waveform: 'sawtooth', offsetSec: 0 },
+      { freqStart: 90,  freqEnd: 30,  durationSec: 0.22, attackSec: 0.002, peakGain: 0.35, waveform: 'square',   offsetSec: 0.02 }
     ]
   }
 };
@@ -307,6 +379,8 @@ export const PARTICLE_ENEMY = { count: 18, lifespanMs: 460, speedMin: 110, speed
 export const PARTICLE_DUST = { count: 7, lifespanMs: 300, speedMin: 30, speedMax: 90, tint: 0xead9b0, scale: 0.8 } as const;
 /** クリア星バースト。 */
 export const PARTICLE_CELEBRATE = { count: 36, lifespanMs: 1000, speedMin: 150, speedMax: 380, tint: 0xffe066, scale: 1.35 } as const;
+/** チクタク爆弾の自爆バースト（橙〜赤・大粒・全方位）。 */
+export const PARTICLE_EXPLODE = { count: 30, lifespanMs: 520, speedMin: 160, speedMax: 420, tint: 0xff7a18, scale: 1.6 } as const;
 
 // --- UI 集約: フォント・文言・スタイル ---
 /** UI 全体の標準フォントファミリ。 */

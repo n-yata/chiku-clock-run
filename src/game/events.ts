@@ -8,6 +8,8 @@ export const GameEvents = {
   PlayerLand: 'player:land',
   /** 敵撃破。payload: 撃破座標 {x,y}。 */
   EnemyKilled: 'enemy:killed',
+  /** チクタク爆弾の自爆。payload: 爆発座標 {x,y}。範囲ダメージ判定は購読側（GameScene）。 */
+  EnemyExploded: 'enemy:exploded',
   /** 歯車片取得。payload: 取得座標 {x,y}。 */
   GearCollected: 'gear:collected',
   /** ゴール到達。payload: ゴール座標 {x,y}。 */

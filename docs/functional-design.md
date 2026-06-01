@@ -160,7 +160,7 @@ interface StageDefinition {
 
 `criticalPath` の各区間は `supportRow` の床上を歩く必須ルートを表す。プレイヤーが詰まらないよう支持床の直上 3 タイルに `#` がないことを `validateCriticalPathClearance()` で検証する。同時に `P` タイル左右 1 セルに `#` がないことを確認し、スポーン / ステージ遷移直後に body が地形へ食い込まないようにする。
 
-難易度は `measureStageDifficulty()` が `enemyCount + groundGapCount * 2 + elevatedSegmentCount * 2` を算出する。`elevatedSegmentCount` は宣言区間数ではなく、主床より上のタイル表面から導出する。`validateDifficultyProgression()` は役割 `intro` / `intermediate` / `final` と score の Stage 01 から Stage 03 への厳密増加を確認する。
+難易度は `measureStageDifficulty()` が `enemyCount + groundGapCount * 2 + elevatedSegmentCount * 2` を算出する。`enemyCount` は 3 種すべて（`E` 巻きネジ障害機 + `F` 時計トンボ + `B` チクタク爆弾）の合算。`elevatedSegmentCount` は宣言区間数ではなく、主床より上のタイル表面から導出する。`validateDifficultyProgression()` は役割 `intro` / `intermediate` / `final` と score の Stage 01 から Stage 03 への厳密増加を確認する。
 
 タイル文字の意味:
 
@@ -170,7 +170,10 @@ interface StageDefinition {
 | `#` | 地面（固定 Sprite） | なし |
 | `P` | プレイヤースポーン | 1 ステージに 1 個・左三分の一以内 |
 | `G` | ゴール | 1 ステージに 1 個 |
-| `E` | 敵スポーン | 1〜8 個・真下が `#` 必須 |
+| `E` | 巻きネジ障害機（地上歩行敵）スポーン | 真下が `#` 必須 |
+| `F` | 時計トンボ（飛行敵）スポーン | 空中配置可（真下 `#` 不要） |
+| `B` | チクタク爆弾（追尾自爆敵）スポーン | 真下が `#` 必須 |
+| 敵合計（`E`+`F`+`B`） | — | 1〜`MAX_ENEMIES_PER_STAGE`（20）個 |
 | `C` | 歯車片 | 1〜30 個 |
 
 #### BuiltStage（buildStage() 生成物）
@@ -221,21 +224,31 @@ stateDiagram-v2
 - `isCleared` / `isMissed` フラグが立った後は `update()` でプレイヤー速度を 0 に固定
 - ミス時はプレイヤーを白くフラッシュ（`MISS_FLASH_COLOR`）し `MISS_FLASH_MS` 後に同ステージを再起動
 
-### 敵 AI（updateEnemyAi）
+### 敵 AI（EnemyManager.update）
 
-毎フレーム以下の優先順で方向を決定する:
+`EnemyManager` は単一の `enemies` グループを管理し、各スプライトの `data: type`（`winder` / `flyer` / `bomb`）で AI を分岐する。
+
+**巻きネジ障害機（winder, `'E'`）** — 毎フレーム以下の優先順で方向を決定する:
 
 1. **壁衝突反転**: `body.blocked.left` → 右へ / `body.blocked.right` → 左へ
 2. **段差端反転**: 着地中（`body.blocked.down`）に進行方向前方の足元タイルを `groundMask` で参照。地面なし → 方向反転
 3. **速度強制セット**: 決定した方向 × `ENEMY_SPEED` を毎フレーム強制して衝突後の速度ゼロ化を防ぐ
 
 ```
-probeX = enemy.x + dir × (ENEMY_SPRITE_W / 2 + 1)
+probeX = enemy.x + dir × (halfW + 1)   // halfW は種別ごとのスプライト半幅
 probeY = enemy.y + ENEMY_SPRITE_H / 2 + 1
 probeCol = floor(probeX / TILE_SIZE)
 probeRow = floor(probeY / TILE_SIZE)
 → groundMask[probeRow][probeCol] が false なら反転
 ```
+
+**時計トンボ（flyer, `'F'`）** — `body.allowGravity = false`。水平は巡回範囲端（原点 ± `FLYER_PATROL_HALF_PX`）または壁で反転。垂直は目標 `originY + FLYER_BOB_AMP_PX × sin(FLYER_BOB_OMEGA × now + phase)` へ P 制御（`FLYER_BOB_K`）で追従し、ドリフトを自己補正する。
+
+**チクタク爆弾（bomb, `'B'`）** — 状態遷移 `idle → chase → fuse`:
+
+1. `idle`: 停止。プレイヤーが検知範囲（`BOMB_DETECT_PX` / `BOMB_DETECT_Y_PX`）に入ると `chase` へ。
+2. `chase`: プレイヤー方向へ `BOMB_SPEED` で追尾。崖際・壁では停止（落下/めり込み防止）。至近（`BOMB_FUSE_TRIGGER_PX`）かつ接地で `fuse` へ。
+3. `fuse`: 停止し点滅テレグラフ（`bombTick`）。`BOMB_FUSE_MS` 経過で `explode()` → `EnemyExploded` 発火し自身を破棄。GameScene 側が爆風（`BOMB_BLAST_RADIUS_PX`）内のプレイヤーへ被弾・演出を適用。
 
 ### 踏みつけ判定（onEnemyOverlap）
 
@@ -248,8 +261,9 @@ isStomp = player.body.velocity.y > 0
 
 | 条件 | 結果 |
 |------|------|
-| `isStomp = true` | 敵を `disableBody(true, true)` で消滅 + プレイヤーに `STOMP_BOUNCE_VELOCITY` を付与 |
-| `isStomp = false` | `handleMiss('enemy')` — ミス処理へ |
+| `isStomp = true` | 3 種共通: `EnemyManager.kill()` でやられ演出 + プレイヤーに `STOMP_BOUNCE_VELOCITY` を付与（爆弾は導火前に解除される）|
+| `isStomp = false` かつ 爆弾 | `EnemyManager.explode()` — 自爆。被弾は `EnemyExploded` ハンドラの爆風判定に委ねる |
+| `isStomp = false` かつ その他 | `handleMiss('enemy')` — ミス処理へ |
 
 ### タッチ入力状態遷移
 

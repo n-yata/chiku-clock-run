@@ -1,10 +1,17 @@
 // ステージ定義。プレイヤーが必須走路を通過できるよう床上 3 タイルを空ける。
 // 行は上から下へ。'.' = 空、'#' = 地面、'P' = プレイヤースポーン、'G' = クロックビーコン、
-// 'E' = 巻きネジ障害機 (真下が '#' 必須)、'C' = 歯車片。
+// 'E' = 巻きネジ障害機 (真下が '#' 必須)、'F' = 時計トンボ (空中配置)、
+// 'B' = チクタク爆弾 (真下が '#' 必須)、'C' = 歯車片。
 // レイアウトの設計: 段差 N=1/2/3 の 3 段差 + 隙間 2 箇所 + ゴール (床上 N=2)。
 // ジャンプ高さの理論最大値 ≒ 4 タイル弱なので N=3 まで。
 
-export type TileChar = '.' | '#' | 'P' | 'G' | 'E' | 'C';
+export type TileChar = '.' | '#' | 'P' | 'G' | 'E' | 'F' | 'B' | 'C';
+
+/** 敵の種別。'winder'='E'（地上歩行）, 'flyer'='F'（飛行）, 'bomb'='B'（追尾自爆）。 */
+export type EnemyType = 'winder' | 'flyer' | 'bomb';
+
+/** 敵の進行方向。-1=左 / 1=右。 */
+export type EnemyDir = -1 | 1;
 
 export interface CriticalPathSegment {
   readonly fromCol: number;

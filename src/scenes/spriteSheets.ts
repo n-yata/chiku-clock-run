@@ -8,11 +8,17 @@ import {
   ENEMY_COLOR, ENEMY_DARK_COLOR, ENEMY_ACCENT_COLOR,
   PLAYER_SPRITE_W, PLAYER_SPRITE_H,
   ENEMY_SPRITE_W, ENEMY_SPRITE_H,
+  FLYER_SPRITE_W, FLYER_SPRITE_H,
+  FLYER_BODY_COLOR, FLYER_BODY_DARK_COLOR, FLYER_WING_COLOR, FLYER_FACE_COLOR,
+  BOMB_SPRITE_W, BOMB_SPRITE_H,
+  BOMB_BODY_COLOR, BOMB_BODY_DARK_COLOR, BOMB_FACE_COLOR, BOMB_TICK_COLOR, BOMB_SPARK_COLOR,
   PARTICLE_DOT_SIZE
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'idle_b' | 'walk1' | 'walk2' | 'walk3' | 'jump';
 type EnemyFrame = 'enemy_walk1' | 'enemy_walk2' | 'enemy_walk3';
+type FlyerFrame = 'flyer1' | 'flyer2';
+type BombFrame = 'bomb_idle' | 'bomb_tick';
 
 function toHex(color: number): string {
   return '#' + color.toString(16).padStart(6, '0');
@@ -715,4 +721,258 @@ function drawEnemyFrame(ctx: CanvasRenderingContext2D, frame: EnemyFrame): void 
   ctx.beginPath();
   ctx.moveTo(116, 50); ctx.lineTo(94, 60); ctx.lineTo(96, 66); ctx.lineTo(116, 58); ctx.closePath();
   ctx.fill();
+}
+
+// =====================================================================
+// 時計トンボ（飛行敵） — 20260601-enemy-types
+// 高解像度 192×160 に描いて 48×40 フレームへダウンスケール。
+// 既定の向きは「左を前」。GameScene 側で dir>0 のとき flipX する。
+// =====================================================================
+const FLYER_DRAW_W = 192;
+const FLYER_DRAW_H = 160;
+
+export function buildFlyerSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.flyerSheet)) return;
+  const frameW = FLYER_SPRITE_W;
+  const frameH = FLYER_SPRITE_H;
+  const frames: FlyerFrame[] = ['flyer1', 'flyer2'];
+  const canvas = document.createElement('canvas');
+  canvas.width = frameW * frames.length;
+  canvas.height = frameH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = true;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = FLYER_DRAW_W;
+  tmp.height = FLYER_DRAW_H;
+  const tmpCtx = tmp.getContext('2d');
+  if (!tmpCtx) throw new Error('canvas 2d context unavailable');
+  tmpCtx.imageSmoothingEnabled = true;
+
+  frames.forEach((frame, i) => {
+    tmpCtx.clearRect(0, 0, FLYER_DRAW_W, FLYER_DRAW_H);
+    drawFlyerFrame(tmpCtx, frame);
+    ctx.drawImage(tmp, 0, 0, FLYER_DRAW_W, FLYER_DRAW_H, i * frameW, 0, frameW, frameH);
+  });
+
+  const tex = scene.textures.addCanvas(TEX_KEY.flyerSheet, canvas);
+  if (!tex) throw new Error(`Failed to create texture: ${TEX_KEY.flyerSheet}`);
+  frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
+}
+
+/** 透ける歯車羽（上下のペア）。frame で羽の角度（上げ/下げ）が変わる。 */
+function drawFlyerWing(ctx: CanvasRenderingContext2D, cx: number, cy: number, lift: number): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  // 羽（楕円・半透明ティール）。lift<0 で上、>0 で下に開く。
+  ctx.rotate(lift * 0.0035);
+  ctx.globalAlpha = 0.55;
+  const g = ctx.createLinearGradient(0, 0, 0, lift);
+  g.addColorStop(0, shade(FLYER_WING_COLOR, 1.25));
+  g.addColorStop(1, shade(FLYER_WING_COLOR, 0.7));
+  ctx.beginPath();
+  ctx.ellipse(0, lift * 0.5, 18, Math.abs(lift) * 0.55, 0, 0, Math.PI * 2);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 2; ctx.strokeStyle = shade(FLYER_WING_COLOR, 0.5); ctx.stroke();
+  // 翅脈（歯車のスポーク風）
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 1.5; ctx.strokeStyle = shade(FLYER_WING_COLOR, 0.4);
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, lift); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-10, lift * 0.55); ctx.lineTo(10, lift * 0.55); ctx.stroke();
+  ctx.restore();
+}
+
+function drawFlyerFrame(ctx: CanvasRenderingContext2D, frame: FlyerFrame): void {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  const up = frame === 'flyer1';
+  const cx = 96, cy = 80;
+
+  // ---- 羽（胸部の上下に 2 ペア。frame で開閉）----
+  const lift = up ? -52 : -22;
+  drawFlyerWing(ctx, cx - 6, cy - 10, lift);          // 上の羽
+  drawFlyerWing(ctx, cx + 8, cy - 10, lift * 0.82);   // 上の羽（奥）
+  drawFlyerWing(ctx, cx - 6, cy + 12, -lift * 0.7);   // 下の羽
+  drawFlyerWing(ctx, cx + 8, cy + 12, -lift * 0.58);  // 下の羽（奥）
+
+  // ---- 尾（後方=右へ伸びる節のある真鍮の腹部）----
+  for (let s = 0; s < 4; s++) {
+    const sx = cx + 18 + s * 18;
+    const r = 11 - s * 1.6;
+    const g = ctx.createLinearGradient(sx, cy - r, sx, cy + r);
+    g.addColorStop(0, shade(FLYER_BODY_COLOR, 1.3));
+    g.addColorStop(1, shade(FLYER_BODY_COLOR, 0.6));
+    ctx.beginPath(); ctx.ellipse(sx, cy, r + 2, r, 0, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = toHex(FLYER_BODY_DARK_COLOR); ctx.stroke();
+  }
+
+  // ---- 胸部（文字盤）----
+  const tg = ctx.createLinearGradient(0, cy - 22, 0, cy + 22);
+  tg.addColorStop(0, shade(FLYER_BODY_COLOR, 1.25));
+  tg.addColorStop(1, shade(FLYER_BODY_COLOR, 0.7));
+  ctx.beginPath(); ctx.ellipse(cx, cy, 24, 22, 0, 0, Math.PI * 2);
+  ctx.fillStyle = tg; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = toHex(FLYER_BODY_DARK_COLOR); ctx.stroke();
+  // 文字盤
+  ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+  ctx.fillStyle = toHex(FLYER_FACE_COLOR); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = toHex(FLYER_BODY_DARK_COLOR); ctx.stroke();
+  // 時計の針
+  ctx.strokeStyle = '#3a2a10'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 7, cy - 3); ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - 2, cy + 8); ctx.stroke();
+
+  // ---- 頭（前方=左）----
+  ctx.beginPath(); ctx.arc(cx - 30, cy, 14, 0, Math.PI * 2);
+  const hg = ctx.createLinearGradient(cx - 44, cy - 14, cx - 16, cy + 14);
+  hg.addColorStop(0, shade(FLYER_BODY_COLOR, 1.2));
+  hg.addColorStop(1, shade(FLYER_BODY_COLOR, 0.65));
+  ctx.fillStyle = hg; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = toHex(FLYER_BODY_DARK_COLOR); ctx.stroke();
+  // 複眼（発光ティール）
+  for (const ox of [-6, 6]) {
+    const eg = ctx.createRadialGradient(cx - 34 + ox * 0.4, cy - 4, 1, cx - 32 + ox * 0.4, cy - 2, 7);
+    eg.addColorStop(0, '#eafff9');
+    eg.addColorStop(0.5, shade(FLYER_WING_COLOR, 1.1));
+    eg.addColorStop(1, shade(FLYER_WING_COLOR, 0.45));
+    ctx.beginPath(); ctx.arc(cx - 32 + ox * 0.4, cy - 4 + (ox > 0 ? 4 : 0), 7, 0, Math.PI * 2);
+    ctx.fillStyle = eg; ctx.fill();
+  }
+  // 触角
+  ctx.strokeStyle = toHex(FLYER_BODY_DARK_COLOR); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - 40, cy - 8); ctx.quadraticCurveTo(cx - 52, cy - 22, cx - 48, cy - 30); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 40, cy + 6); ctx.quadraticCurveTo(cx - 54, cy - 2, cx - 56, cy - 10); ctx.stroke();
+}
+
+// =====================================================================
+// チクタク爆弾（追尾自爆敵） — 20260601-enemy-types
+// 高解像度 160×160 に描いて 40×40 フレームへダウンスケール。
+// bomb_idle=穏やかな文字盤 / bomb_tick=赤く点灯し火花が強まる。
+// =====================================================================
+const BOMB_DRAW = 160;
+
+export function buildBombSheet(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.bombSheet)) return;
+  const frameW = BOMB_SPRITE_W;
+  const frameH = BOMB_SPRITE_H;
+  const frames: BombFrame[] = ['bomb_idle', 'bomb_tick'];
+  const canvas = document.createElement('canvas');
+  canvas.width = frameW * frames.length;
+  canvas.height = frameH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = true;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = BOMB_DRAW;
+  tmp.height = BOMB_DRAW;
+  const tmpCtx = tmp.getContext('2d');
+  if (!tmpCtx) throw new Error('canvas 2d context unavailable');
+  tmpCtx.imageSmoothingEnabled = true;
+
+  frames.forEach((frame, i) => {
+    tmpCtx.clearRect(0, 0, BOMB_DRAW, BOMB_DRAW);
+    drawBombFrame(tmpCtx, frame);
+    ctx.drawImage(tmp, 0, 0, BOMB_DRAW, BOMB_DRAW, i * frameW, 0, frameW, frameH);
+  });
+
+  const tex = scene.textures.addCanvas(TEX_KEY.bombSheet, canvas);
+  if (!tex) throw new Error(`Failed to create texture: ${TEX_KEY.bombSheet}`);
+  frames.forEach((name, i) => tex.add(name, 0, i * frameW, 0, frameW, frameH));
+}
+
+function drawBombFrame(ctx: CanvasRenderingContext2D, frame: BombFrame): void {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  const tick = frame === 'bomb_tick';
+  const cx = 80, cy = 92;
+  const R = 46;
+
+  // ---- 小さな脚（球体の下）----
+  ctx.strokeStyle = toHex(BOMB_BODY_DARK_COLOR); ctx.lineWidth = 9;
+  for (const ox of [-18, 18]) {
+    ctx.beginPath(); ctx.moveTo(cx + ox, cy + R - 6); ctx.lineTo(cx + ox, cy + R + 14); ctx.stroke();
+  }
+  // 足（接地パッド）
+  ctx.fillStyle = shade(BOMB_BODY_DARK_COLOR, 1.2);
+  for (const ox of [-18, 18]) {
+    roundRectPath(ctx, cx + ox - 12, cy + R + 12, 24, 9, 4); ctx.fill();
+  }
+
+  // ---- 球体本体 ----
+  const bg = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, 4, cx, cy, R);
+  bg.addColorStop(0, shade(BOMB_BODY_COLOR, 1.5));
+  bg.addColorStop(1, shade(BOMB_BODY_COLOR, 0.6));
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = bg; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = toHex(BOMB_BODY_DARK_COLOR); ctx.stroke();
+  // リベット
+  ctx.fillStyle = shade(BOMB_BODY_COLOR, 1.8);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R - 7), cy + Math.sin(a) * (R - 7), 2.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ---- 前面の文字盤 ----
+  const faceColor = tick ? BOMB_TICK_COLOR : BOMB_FACE_COLOR;
+  ctx.beginPath(); ctx.arc(cx, cy + 2, 24, 0, Math.PI * 2);
+  ctx.fillStyle = toHex(faceColor); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = toHex(BOMB_SPARK_COLOR); ctx.stroke();
+  // 目盛り
+  ctx.strokeStyle = tick ? 'rgba(80,10,0,0.8)' : 'rgba(60,42,14,0.7)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * 20, cy + 2 + Math.sin(a) * 20);
+    ctx.lineTo(cx + Math.cos(a) * 23, cy + 2 + Math.sin(a) * 23);
+    ctx.stroke();
+  }
+  // 表情（目）: idle=丸い点 / tick=吊り上がった怒り目
+  ctx.fillStyle = tick ? '#5a0a00' : '#3a2a10';
+  if (tick) {
+    ctx.save(); ctx.translate(cx - 9, cy - 2); ctx.rotate(0.4);
+    ctx.fillRect(-5, -2, 10, 4); ctx.restore();
+    ctx.save(); ctx.translate(cx + 9, cy - 2); ctx.rotate(-0.4);
+    ctx.fillRect(-5, -2, 10, 4); ctx.restore();
+  } else {
+    ctx.beginPath(); ctx.arc(cx - 8, cy - 1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 8, cy - 1, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  // 口
+  ctx.strokeStyle = tick ? '#5a0a00' : '#3a2a10'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  if (tick) ctx.arc(cx, cy + 14, 6, Math.PI * 1.1, Math.PI * 1.9); // 焦り（への字）
+  else ctx.arc(cx, cy + 8, 5, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+
+  // ---- 頭頂のぜんまいキー兼導火 ----
+  ctx.strokeStyle = toHex(BOMB_BODY_DARK_COLOR); ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(cx, cy - R + 4); ctx.lineTo(cx, cy - R - 18); ctx.stroke();
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(cx - 9, cy - R - 22, 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + 9, cy - R - 22, 8, 0, Math.PI * 2); ctx.stroke();
+  // 火花（tick で大きく明るく）
+  const sparkR = tick ? 12 : 5;
+  const sg = ctx.createRadialGradient(cx, cy - R - 30, 1, cx, cy - R - 30, sparkR);
+  sg.addColorStop(0, '#fffbe0');
+  sg.addColorStop(0.5, toHex(BOMB_SPARK_COLOR));
+  sg.addColorStop(1, tick ? 'rgba(255,69,48,0.0)' : 'rgba(255,210,74,0.0)');
+  ctx.beginPath(); ctx.arc(cx, cy - R - 30, sparkR, 0, Math.PI * 2);
+  ctx.fillStyle = sg; ctx.fill();
+  if (tick) {
+    // 弾ける火花の筋
+    ctx.strokeStyle = toHex(BOMB_SPARK_COLOR); ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 8, cy - R - 30 + Math.sin(a) * 8);
+      ctx.lineTo(cx + Math.cos(a) * 16, cy - R - 30 + Math.sin(a) * 16);
+      ctx.stroke();
+    }
+  }
 }

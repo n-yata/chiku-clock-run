@@ -6,6 +6,12 @@ import {
   GEAR_BIT_SPRITE_W,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
+  FLYER_SPEED,
+  BOMB_SPRITE_H,
+  MAX_ENEMIES_PER_STAGE,
+  BOMB_BLAST_RADIUS_PX,
+  BOMB_SHAKE_MS,
+  BOMB_SHAKE_INTENSITY,
   FALL_THRESHOLD_Y,
   GAME_OVER_TEXT,
   GAME_OVER_TO_TITLE_DELAY_MS,
@@ -40,6 +46,7 @@ import {
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
 import { getStage, nextStageIndex, STAGES, type StageDefinition } from '../stages/index';
+import type { EnemyType, EnemyDir } from '../stages/stage01';
 import { registerAnimations } from './animations';
 import { CameraController } from '../game/CameraController';
 import { HudManager } from '../game/HudManager';
@@ -61,8 +68,6 @@ interface BuiltStage {
   gearBitTotal: number;
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;
 }
-
-type EnemyDir = -1 | 1;
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -168,7 +173,7 @@ export class GameScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(this.spawnX, this.spawnY, TEX_KEY.playerSheet, 'idle');
     this.player.setCollideWorldBounds(false);
 
-    this.enemyManager = new EnemyManager(this, this.enemies, this.groundMask);
+    this.enemyManager = new EnemyManager(this, this.enemies, this.groundMask, this.player);
     this.powerUps = new PowerUpManager(this, this.player);
 
     this.collisions = new CollisionHandler(this, this);
@@ -206,6 +211,16 @@ export class GameScene extends Phaser.Scene {
     // 敵撃破（踏みつけ）で消滅バーストを出す。
     this.events.on(GameEvents.EnemyKilled, (p: PointPayload) => {
       this.particles.burstEnemy(p.x, p.y);
+    });
+    // チクタク爆弾の自爆: 演出 + 爆風半径内のプレイヤーへダメージ。
+    this.events.on(GameEvents.EnemyExploded, (p: PointPayload) => {
+      this.particles.burstExplosion(p.x, p.y);
+      this.audio.playSe('explode');
+      this.cameras.main.shake(BOMB_SHAKE_MS, BOMB_SHAKE_INTENSITY);
+      const dist = Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
+      if (dist <= BOMB_BLAST_RADIUS_PX) {
+        this.handleMiss('enemy');
+      }
     });
 
     this.playerController = new PlayerController(this.player, {
@@ -315,7 +330,7 @@ export class GameScene extends Phaser.Scene {
     let spawnRow = -1;
     let goalCol = -1;
     let goalRow = -1;
-    const enemyPositions: Array<{ col: number; row: number }> = [];
+    const enemyPositions: Array<{ col: number; row: number; type: EnemyType }> = [];
     const gearBitPositions: Array<{ col: number; row: number }> = [];
 
     for (let r = 0; r < def.rows; r++) {
@@ -334,7 +349,11 @@ export class GameScene extends Phaser.Scene {
           goalCol = c;
           goalRow = r;
         } else if (ch === 'E') {
-          enemyPositions.push({ col: c, row: r });
+          enemyPositions.push({ col: c, row: r, type: 'winder' });
+        } else if (ch === 'F') {
+          enemyPositions.push({ col: c, row: r, type: 'flyer' });
+        } else if (ch === 'B') {
+          enemyPositions.push({ col: c, row: r, type: 'bomb' });
         } else if (ch === 'C') {
           gearBitPositions.push({ col: c, row: r });
         } else if (ch !== '.' && ch !== '#') {
@@ -353,9 +372,9 @@ export class GameScene extends Phaser.Scene {
         `Stage ${def.id}: spawn col ${spawnCol} must be within left third (< ${Math.floor(def.cols / 3)})`
       );
     }
-    if (enemyPositions.length < 1 || enemyPositions.length > 14) {
+    if (enemyPositions.length < 1 || enemyPositions.length > MAX_ENEMIES_PER_STAGE) {
       throw new Error(
-        `Stage ${def.id}: 'E' count must be 1..14 (got ${enemyPositions.length})`
+        `Stage ${def.id}: enemy count ('E'+'F'+'B') must be 1..${MAX_ENEMIES_PER_STAGE} (got ${enemyPositions.length})`
       );
     }
     if (gearBitPositions.length < 1 || gearBitPositions.length > 30) {
@@ -363,12 +382,14 @@ export class GameScene extends Phaser.Scene {
         `Stage ${def.id}: 'C' Gear Bit count must be 1..30 (got ${gearBitPositions.length})`
       );
     }
-    // 'E' は地面の真上に置かないと出現直後に落下するため、buildStage 段階で弾く
+    // 地上敵（winder='E' / bomb='B'）は地面の真上に置かないと出現直後に落下するため弾く。
+    // 飛行敵（flyer='F'）は空中配置のため対象外。
     for (const p of enemyPositions) {
+      if (p.type === 'flyer') continue;
       const below = p.row + 1 < def.rows ? def.tiles[p.row + 1].charAt(p.col) : '.';
       if (below !== '#') {
         throw new Error(
-          `Stage ${def.id}: 'E' at (${p.col},${p.row}) must have '#' directly below`
+          `Stage ${def.id}: ground enemy '${p.type}' at (${p.col},${p.row}) must have '#' directly below`
         );
       }
     }
@@ -431,19 +452,62 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildEnemies(
-    positions: Array<{ col: number; row: number }>
+    positions: Array<{ col: number; row: number; type: EnemyType }>
   ): Phaser.Physics.Arcade.Group {
     const group = this.physics.add.group();
     for (const p of positions) {
       const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
-      const cy = (p.row + 1) * TILE_SIZE - ENEMY_SPRITE_H / 2;
-      const enemy = group.create(cx, cy, TEX_KEY.enemySheet, 'enemy_walk1') as Phaser.Physics.Arcade.Sprite;
-      enemy.setData('dir', -1 satisfies EnemyDir);
-      enemy.setVelocityX(-ENEMY_SPEED);
-      enemy.anims.play(ANIM_KEY.winderWalk, true);
-      enemy.setCollideWorldBounds(false);
+      switch (p.type) {
+        case 'flyer':
+          this.spawnFlyer(group, p.col, p.row, cx);
+          break;
+        case 'bomb':
+          this.spawnBomb(group, p.row, cx);
+          break;
+        default:
+          this.spawnWinder(group, p.row, cx);
+      }
     }
     return group;
+  }
+
+  /** 巻きネジ機（地上歩行）を生成する。 */
+  private spawnWinder(group: Phaser.Physics.Arcade.Group, row: number, cx: number): void {
+    const cy = (row + 1) * TILE_SIZE - ENEMY_SPRITE_H / 2;
+    const enemy = group.create(cx, cy, TEX_KEY.enemySheet, 'enemy_walk1') as Phaser.Physics.Arcade.Sprite;
+    enemy.setData('type', 'winder' satisfies EnemyType);
+    enemy.setData('dir', -1 satisfies EnemyDir);
+    enemy.setVelocityX(-ENEMY_SPEED);
+    enemy.anims.play(ANIM_KEY.winderWalk, true);
+    enemy.setCollideWorldBounds(false);
+  }
+
+  /** 時計トンボ（飛行）を生成する。重力無効で空中のタイル中心に配置し、巡回の原点を記録する。 */
+  private spawnFlyer(group: Phaser.Physics.Arcade.Group, col: number, row: number, cx: number): void {
+    const cy = row * TILE_SIZE + TILE_SIZE / 2;
+    const flyer = group.create(cx, cy, TEX_KEY.flyerSheet, 'flyer1') as Phaser.Physics.Arcade.Sprite;
+    const body = flyer.body as Phaser.Physics.Arcade.Body;
+    body.setAllowGravity(false);
+    flyer.setData('type', 'flyer' satisfies EnemyType);
+    flyer.setData('dir', -1 satisfies EnemyDir);
+    flyer.setData('originX', cx);
+    flyer.setData('originY', cy);
+    // 個体ごとに上下揺れの位相をずらして群れの単調さを避ける。
+    flyer.setData('phase', (col % 7) * 0.9);
+    flyer.setVelocityX(-FLYER_SPEED);
+    flyer.anims.play(ANIM_KEY.flyerFly, true);
+    flyer.setCollideWorldBounds(false);
+  }
+
+  /** チクタク爆弾（追尾自爆）を生成する。地上設置で初期状態は idle。 */
+  private spawnBomb(group: Phaser.Physics.Arcade.Group, row: number, cx: number): void {
+    const cy = (row + 1) * TILE_SIZE - BOMB_SPRITE_H / 2;
+    const bomb = group.create(cx, cy, TEX_KEY.bombSheet, 'bomb_idle') as Phaser.Physics.Arcade.Sprite;
+    bomb.setData('type', 'bomb' satisfies EnemyType);
+    bomb.setData('state', 'idle');
+    bomb.setVelocityX(0);
+    bomb.anims.play(ANIM_KEY.bombIdle, true);
+    bomb.setCollideWorldBounds(false);
   }
 
   private buildGearBits(
@@ -481,10 +545,17 @@ export class GameScene extends Phaser.Scene {
 
     const isStomp = pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
     if (isStomp) {
+      // 踏みつけは 3 種共通で撃破（爆弾は導火前に解除される）。
       this.enemyManager.kill(eSprite);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');
       this.applyHitstop();
+      return;
+    }
+
+    // 爆弾への接触（横/下）は自爆。ダメージは EnemyExploded ハンドラの爆風判定に委ねる。
+    if (eSprite.getData('type') === 'bomb') {
+      this.enemyManager.explode(eSprite);
       return;
     }
 

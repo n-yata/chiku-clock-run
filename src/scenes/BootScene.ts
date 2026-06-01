@@ -7,6 +7,8 @@ import {
 import {
   buildPlayerSheet,
   buildEnemySheet,
+  buildFlyerSheet,
+  buildBombSheet,
   buildParticleTexture,
   buildBackgroundTile,
   buildBackgroundOverlay
@@ -42,6 +44,8 @@ export class BootScene extends Phaser.Scene {
 
     buildPlayerSheet(this);
     buildEnemySheet(this);
+    buildFlyerSheet(this);
+    buildBombSheet(this);
     buildParticleTexture(this);
     buildBackgroundTile(this);
     buildBackgroundOverlay(this);
