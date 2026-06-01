@@ -12,6 +12,7 @@ import {
   FLYER_BODY_COLOR, FLYER_BODY_DARK_COLOR, FLYER_WING_COLOR, FLYER_FACE_COLOR,
   BOMB_SPRITE_W, BOMB_SPRITE_H,
   BOMB_BODY_COLOR, BOMB_BODY_DARK_COLOR, BOMB_FACE_COLOR, BOMB_TICK_COLOR, BOMB_SPARK_COLOR,
+  BEACON_SPRITE_W, BEACON_SPRITE_H, BEACON_COLOR,
   PARTICLE_DOT_SIZE
 } from '../config/gameConfig';
 
@@ -975,4 +976,164 @@ function drawBombFrame(ctx: CanvasRenderingContext2D, frame: BombFrame): void {
       ctx.stroke();
     }
   }
+}
+
+// =====================================================================
+// ゴール（クロックタワー / 置き時計型ビーコン）
+// 旧 beacon.png（バス停状）を廃し、世界観に合う真鍮の置き時計として手続き描画する。
+// 高解像度（128×256）に描き、実フレーム（32×64）へ滑らかに縮小する。
+// =====================================================================
+const BEACON_DRAW_W = 128;
+const BEACON_DRAW_H = 256;
+
+export function buildBeaconTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.beacon)) return;
+  const frameW = BEACON_SPRITE_W;  // 32
+  const frameH = BEACON_SPRITE_H;  // 64
+  const canvas = document.createElement('canvas');
+  canvas.width = frameW;
+  canvas.height = frameH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = true;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = BEACON_DRAW_W;
+  tmp.height = BEACON_DRAW_H;
+  const tmpCtx = tmp.getContext('2d');
+  if (!tmpCtx) throw new Error('canvas 2d context unavailable');
+  tmpCtx.imageSmoothingEnabled = true;
+
+  drawBeacon(tmpCtx);
+  ctx.drawImage(tmp, 0, 0, BEACON_DRAW_W, BEACON_DRAW_H, 0, 0, frameW, frameH);
+
+  if (!scene.textures.addCanvas(TEX_KEY.beacon, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.beacon}`);
+  }
+}
+
+/** 置き時計型ゴールを中央 x=64 の 128×256 空間に描く（足元が下端）。 */
+function drawBeacon(ctx: CanvasRenderingContext2D): void {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  const cx = 64;
+  const brassHex = toHex(PLAYER_BRASS_COLOR);       // 真鍮
+  const brassDark = shade(PLAYER_BRASS_COLOR, 0.55);  // 既に 'rgb(...)' 文字列
+  const brassLight = shade(PLAYER_BRASS_COLOR, 1.45);
+  const creamHex = toHex(BOMB_FACE_COLOR);          // 文字盤のクリーム
+  void BEACON_COLOR;                                 // 象徴色は rgba リテラルで使用
+
+  // --- 背後のティールグロー（ゴールの目印感）---
+  const halo = ctx.createRadialGradient(cx, 96, 6, cx, 110, 120);
+  halo.addColorStop(0, 'rgba(66,197,187,0.55)');
+  halo.addColorStop(0.5, 'rgba(66,197,187,0.20)');
+  halo.addColorStop(1, 'rgba(66,197,187,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, BEACON_DRAW_W, BEACON_DRAW_H);
+
+  // --- 台座（プリンス）---
+  ctx.fillStyle = brassDark;
+  roundRectPath(ctx, 18, 232, 92, 18, 5); ctx.fill();
+  ctx.fillStyle = brassHex;
+  roundRectPath(ctx, 24, 226, 80, 12, 4); ctx.fill();
+
+  // --- 本体ケース（縦長キャビネット）---
+  const caseX = 30, caseY = 62, caseW = 68, caseH = 170;
+  // 木目調の暗いティール×ブラウンのパネル
+  const bodyGrad = ctx.createLinearGradient(caseX, 0, caseX + caseW, 0);
+  bodyGrad.addColorStop(0, '#2a2017');
+  bodyGrad.addColorStop(0.5, '#3c2c1d');
+  bodyGrad.addColorStop(1, '#241a12');
+  ctx.fillStyle = bodyGrad;
+  roundRectPath(ctx, caseX, caseY, caseW, caseH, 12); ctx.fill();
+  // 真鍮の枠
+  ctx.lineWidth = 6; ctx.strokeStyle = brassHex;
+  roundRectPath(ctx, caseX, caseY, caseW, caseH, 12); ctx.stroke();
+  ctx.lineWidth = 2; ctx.strokeStyle = brassLight;
+  roundRectPath(ctx, caseX + 4, caseY + 4, caseW - 8, caseH - 8, 9); ctx.stroke();
+
+  // --- 上部の冠（ペディメント）+ ぜんまいキー型フィニアル ---
+  ctx.fillStyle = brassHex;
+  ctx.beginPath();
+  ctx.moveTo(caseX - 4, caseY + 6);
+  ctx.quadraticCurveTo(cx, caseY - 34, caseX + caseW + 4, caseY + 6);
+  ctx.lineTo(caseX + caseW + 4, caseY + 12);
+  ctx.lineTo(caseX - 4, caseY + 12);
+  ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = brassDark; ctx.stroke();
+  // フィニアル（小歯車）
+  ctx.save();
+  ctx.translate(cx, caseY - 30);
+  beaconGear(ctx, 12, 8, brassHex, brassDark);
+  ctx.restore();
+
+  // --- 文字盤（上部の大きな時計）---
+  const fcx = cx, fcy = 112;
+  // ティールのグローリング
+  ctx.beginPath(); ctx.arc(fcx, fcy, 46, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(66,197,187,0.35)'; ctx.fill();
+  // 真鍮リング
+  ctx.beginPath(); ctx.arc(fcx, fcy, 40, 0, Math.PI * 2);
+  ctx.fillStyle = brassDark; ctx.fill();
+  ctx.beginPath(); ctx.arc(fcx, fcy, 36, 0, Math.PI * 2);
+  ctx.fillStyle = brassHex; ctx.fill();
+  // クリームの文字盤
+  const faceGrad = ctx.createRadialGradient(fcx - 8, fcy - 10, 4, fcx, fcy, 32);
+  faceGrad.addColorStop(0, '#ffffff');
+  faceGrad.addColorStop(1, creamHex);
+  ctx.beginPath(); ctx.arc(fcx, fcy, 31, 0, Math.PI * 2);
+  ctx.fillStyle = faceGrad; ctx.fill();
+  // 時刻マーカー
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const big = i % 3 === 0;
+    const r1 = 28, r2 = 28 - (big ? 9 : 5);
+    ctx.lineWidth = big ? 4 : 2;
+    ctx.strokeStyle = brassDark;
+    ctx.beginPath();
+    ctx.moveTo(fcx + Math.cos(a) * r1, fcy + Math.sin(a) * r1);
+    ctx.lineTo(fcx + Math.cos(a) * r2, fcy + Math.sin(a) * r2);
+    ctx.stroke();
+  }
+  // 針（祝福の 10:10 風に上向き V）
+  ctx.strokeStyle = '#2a1a05'; ctx.lineCap = 'round';
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(fcx, fcy); ctx.lineTo(fcx - 13, fcy - 12); ctx.stroke(); // 時針
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(fcx, fcy); ctx.lineTo(fcx + 11, fcy - 20); ctx.stroke(); // 分針
+  ctx.beginPath(); ctx.arc(fcx, fcy, 4, 0, Math.PI * 2); ctx.fillStyle = brassHex; ctx.fill();
+
+  // --- 下部の振り子窓 ---
+  const pcy = 188;
+  ctx.beginPath(); ctx.arc(cx, pcy, 24, 0, Math.PI * 2);
+  ctx.fillStyle = '#15100a'; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = brassHex; ctx.stroke();
+  // 振り子の棒 + ブラスの錘
+  ctx.strokeStyle = brassLight; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx, pcy - 22); ctx.lineTo(cx + 7, pcy + 6); ctx.stroke();
+  const bob = ctx.createRadialGradient(cx + 5, pcy + 6, 1, cx + 7, pcy + 8, 11);
+  bob.addColorStop(0, brassLight);
+  bob.addColorStop(1, brassDark);
+  ctx.beginPath(); ctx.arc(cx + 7, pcy + 9, 10, 0, Math.PI * 2);
+  ctx.fillStyle = bob; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = brassDark; ctx.stroke();
+
+  // --- 上部のきらめき（ゴールの輝き）---
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(fcx - 12, fcy - 16, 3.2, 0, Math.PI * 2); ctx.fill();
+}
+
+/** 中心(0,0)の小歯車（ビーコンのフィニアル用）。 */
+function beaconGear(ctx: CanvasRenderingContext2D, r: number, teeth: number, color: string, dark: string): void {
+  ctx.fillStyle = color;
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    ctx.beginPath();
+    ctx.arc(ca * (r + 3), sa * (r + 3), r * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = dark;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2); ctx.fill();
 }

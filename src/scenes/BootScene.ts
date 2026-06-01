@@ -9,6 +9,7 @@ import {
   buildEnemySheet,
   buildFlyerSheet,
   buildBombSheet,
+  buildBeaconTexture,
   buildParticleTexture,
   buildBackgroundTile,
   buildBackgroundOverlay
@@ -17,7 +18,6 @@ import { STAGES } from '../stages/index';
 
 const REQUIRED_IMAGE_ASSETS = [
   { key: TEX_KEY.ground, url: new URL('../assets/images/ground.png', import.meta.url).href },
-  { key: TEX_KEY.beacon, url: new URL('../assets/images/beacon.png', import.meta.url).href },
   { key: TEX_KEY.gearBit, url: new URL('../assets/images/gear-bit.png', import.meta.url).href }
 ] as const;
 
@@ -46,6 +46,7 @@ export class BootScene extends Phaser.Scene {
     buildEnemySheet(this);
     buildFlyerSheet(this);
     buildBombSheet(this);
+    buildBeaconTexture(this);
     buildParticleTexture(this);
     buildBackgroundTile(this);
     buildBackgroundOverlay(this);
