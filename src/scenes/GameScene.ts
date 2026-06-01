@@ -6,8 +6,12 @@ import {
   GEAR_BIT_SPRITE_W,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
+  ENEMY_BODY_W,
   FLYER_SPEED,
+  FLYER_SPRITE_H,
+  FLYER_BODY_W,
   BOMB_SPRITE_H,
+  BOMB_BODY_W,
   MAX_ENEMIES_PER_STAGE,
   BOMB_BLAST_RADIUS_PX,
   BOMB_SHAKE_MS,
@@ -475,6 +479,8 @@ export class GameScene extends Phaser.Scene {
   private spawnWinder(group: Phaser.Physics.Arcade.Group, row: number, cx: number): void {
     const cy = (row + 1) * TILE_SIZE - ENEMY_SPRITE_H / 2;
     const enemy = group.create(cx, cy, TEX_KEY.enemySheet, 'enemy_walk1') as Phaser.Physics.Arcade.Sprite;
+    // 左右の当たり判定をスプライト枠より絞る（中央寄せ）。縦は据え置きで踏みつけ判定を維持。
+    (enemy.body as Phaser.Physics.Arcade.Body).setSize(ENEMY_BODY_W, ENEMY_SPRITE_H);
     enemy.setData('type', 'winder' satisfies EnemyType);
     enemy.setData('dir', -1 satisfies EnemyDir);
     enemy.setVelocityX(-ENEMY_SPEED);
@@ -488,6 +494,8 @@ export class GameScene extends Phaser.Scene {
     const flyer = group.create(cx, cy, TEX_KEY.flyerSheet, 'flyer1') as Phaser.Physics.Arcade.Sprite;
     const body = flyer.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
+    // 左右の当たり判定を絞る（中央寄せ）。
+    body.setSize(FLYER_BODY_W, FLYER_SPRITE_H);
     flyer.setData('type', 'flyer' satisfies EnemyType);
     flyer.setData('dir', -1 satisfies EnemyDir);
     flyer.setData('originX', cx);
@@ -503,6 +511,8 @@ export class GameScene extends Phaser.Scene {
   private spawnBomb(group: Phaser.Physics.Arcade.Group, row: number, cx: number): void {
     const cy = (row + 1) * TILE_SIZE - BOMB_SPRITE_H / 2;
     const bomb = group.create(cx, cy, TEX_KEY.bombSheet, 'bomb_idle') as Phaser.Physics.Arcade.Sprite;
+    // 左右の当たり判定を絞る（中央寄せ）。
+    (bomb.body as Phaser.Physics.Arcade.Body).setSize(BOMB_BODY_W, BOMB_SPRITE_H);
     bomb.setData('type', 'bomb' satisfies EnemyType);
     bomb.setData('state', 'idle');
     bomb.setVelocityX(0);

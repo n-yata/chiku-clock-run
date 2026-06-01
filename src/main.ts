@@ -66,3 +66,45 @@ const applyOrientation = (): void => {
 
 mq.addEventListener('change', applyOrientation);
 window.addEventListener('resize', () => requestAnimationFrame(syncSize));
+
+// --- Android PWA: マルチタスクから復帰すると画面が真っ黒になる問題への対処 ---
+// バックグラウンド中に WebGL コンテキストが失われたり、復帰直後にキャンバスの実サイズが
+// 0 のまま固定されたりするのが原因。復帰時にサイズとレンダラを描き直し、コンテキストが
+// 失われたまま復元されない端末では最終手段としてリロードして黒画面を回避する。
+// リロードはセッション内 1 回までに制限し、コンテキストを復元できない端末での
+// 「復帰→黒画面→reload」無限ループ（自己DoS的挙動）を断つ。
+const GL_RELOAD_FLAG = 'chiku-clock-run.glReloaded';
+let glContextLost = false;
+const canvas = game.canvas;
+if (canvas) {
+  canvas.addEventListener('webglcontextlost', (e) => {
+    // preventDefault しないとブラウザは webglcontextrestored を発火しない（軽量復帰の前提）。
+    e.preventDefault();
+    glContextLost = true;
+  }, false);
+  canvas.addEventListener('webglcontextrestored', () => {
+    glContextLost = false;
+    try { sessionStorage.removeItem(GL_RELOAD_FLAG); } catch { /* 利用不可時は無視 */ }
+    requestAnimationFrame(() => { syncSize(); game.scale.refresh(); });
+  }, false);
+}
+
+const handleResume = (): void => {
+  if (document.visibilityState !== 'visible') return;
+  // 2 フレーム待ってからサイズとレンダラを確定する（復帰直後は innerWidth/Height が
+  // 旧値や 0 を返すことがあるため）。それでも GL コンテキストが失われたままなら最終手段でリロード。
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    syncSize();
+    game.scale.refresh();
+    if (!glContextLost) return;
+    let alreadyReloaded = false;
+    try { alreadyReloaded = sessionStorage.getItem(GL_RELOAD_FLAG) === '1'; } catch { /* 無視 */ }
+    if (!alreadyReloaded) {
+      try { sessionStorage.setItem(GL_RELOAD_FLAG, '1'); } catch { /* 無視 */ }
+      window.location.reload();
+    }
+  }));
+};
+document.addEventListener('visibilitychange', handleResume);
+// bfcache から復元された場合（pageshow.persisted）も同様に描き直す。
+window.addEventListener('pageshow', (e) => { if (e.persisted) handleResume(); });

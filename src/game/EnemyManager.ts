@@ -178,13 +178,18 @@ export class EnemyManager {
     this.scene.events.emit(GameEvents.EnemyKilled, { x, y });
   }
 
-  /** チクタク爆弾を自爆させ、EnemyExploded を発火して即時破棄する。範囲ダメージ判定は GameScene 側。 */
+  /** チクタク爆弾を自爆させ、EnemyExploded を発火して破棄する。範囲ダメージ判定は GameScene 側。 */
   explode(enemy: Phaser.Physics.Arcade.Sprite): void {
     if (!enemy.active) return;
     const x = enemy.x;
     const y = enemy.y;
-    enemy.disableBody(true, false);
+    // overlap コールバックや group.iterate の最中に呼ばれるため、即時 destroy するとグループ配列が
+    // 走査中に変化してインデックスがズレ、衝突処理が例外を投げてゲームループが停止する（画面フリーズ）。
+    // disableBody で物理・表示を即無効化し、実際の destroy は物理ステップ外（次フレーム）へ遅延させる。
+    enemy.disableBody(true, true);
     this.scene.events.emit(GameEvents.EnemyExploded, { x, y });
-    enemy.destroy();
+    this.scene.time.delayedCall(0, () => {
+      if (enemy.active || enemy.scene) enemy.destroy();
+    });
   }
 }

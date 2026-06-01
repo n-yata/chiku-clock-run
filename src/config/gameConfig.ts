@@ -85,6 +85,11 @@ export const ENEMY_DARK_COLOR = 0x5a3818;
 export const ENEMY_ACCENT_COLOR = 0x5ecabc;
 export const ENEMY_SPEED = 60;
 export const STOMP_BOUNCE_VELOCITY = -280;
+/**
+ * 巻きネジ機の物理ボディ横幅 (px)。スプライト枠 44px の中央に寄せて左右の当たり判定を絞る
+ * （見た目より狭く＝理不尽な被弾を防ぐ）。縦は枠どおり (ENEMY_SPRITE_H) を保ち踏みつけ判定を維持。
+ */
+export const ENEMY_BODY_W = 26;
 /** 1 ステージに配置できる敵（'E'+'F'+'B'）の合計上限。 */
 export const MAX_ENEMIES_PER_STAGE = 20;
 
@@ -110,6 +115,8 @@ export const FLYER_BOB_K = 8;
 export const FLYER_PATROL_HALF_PX = 96;
 /** 羽ばたきアニメの FPS。 */
 export const FLYER_ANIM_FPS = 12;
+/** 時計トンボの物理ボディ横幅 (px)。スプライト枠 48px の中央に寄せて左右当たり判定を絞る。 */
+export const FLYER_BODY_W = 30;
 
 // --- 20260601-enemy-types: チクタク爆弾（追尾自爆敵） ---
 export const BOMB_SPRITE_W = 40;
@@ -137,6 +144,8 @@ export const BOMB_FUSE_MS = 650;
 export const BOMB_BLAST_RADIUS_PX = 72;
 /** 導火点滅アニメの FPS。 */
 export const BOMB_TICK_FPS = 10;
+/** チクタク爆弾の物理ボディ横幅 (px)。スプライト枠 40px の中央に寄せて左右当たり判定を絞る。 */
+export const BOMB_BODY_W = 26;
 /** 自爆時の画面シェイク継続時間 (ms) と強度。 */
 export const BOMB_SHAKE_MS = 180;
 export const BOMB_SHAKE_INTENSITY = 0.012;
