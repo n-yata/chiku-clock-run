@@ -115,6 +115,8 @@ export class GameScene extends Phaser.Scene {
   private collisions!: CollisionHandler;
   /** クリア / ゲームオーバー時の自動遷移を、タップ/キーで前倒しするためのワンショット。 */
   private pendingAdvance: (() => void) | null = null;
+  /** 同一フレーム内で踏みつけが成立したフレーム番号。重なった敵を一括で踏めるようにするラッチ。 */
+  private stompFrame = -1;
 
   constructor() {
     super('GameScene');
@@ -144,6 +146,7 @@ export class GameScene extends Phaser.Scene {
     this.gearBitsCollected = 0;
     this.playerGroundCollider = null;
     this.pendingAdvance = null;
+    this.stompFrame = -1;
 
     const stage = this.stage;
     const worldWidth = stage.cols * TILE_SIZE;
@@ -553,9 +556,16 @@ export class GameScene extends Phaser.Scene {
     const eSprite = enemy as Phaser.Physics.Arcade.Sprite;
     const eBody = eSprite.body as Phaser.Physics.Arcade.Body;
 
-    const isStomp = pBody.velocity.y > 0 && pBody.center.y <= eBody.center.y;
+    // 敵が重なっている場合、1 体目を踏むと bounce で velocity.y が上向きになり、
+    // 同フレームで処理される 2 体目以降が「踏みつけでない」＝被弾と誤判定される。
+    // そのため、同一フレーム内で一度踏みつけが成立したら、足元(プレイヤー中心が敵中心より上)に
+    // ある後続の敵も踏みつけ扱いにする（frame 番号でラッチ）。
+    const frame = this.game.getFrame();
+    const onTop = pBody.center.y <= eBody.center.y;
+    const isStomp = onTop && (pBody.velocity.y > 0 || this.stompFrame === frame);
     if (isStomp) {
       // 踏みつけは 3 種共通で撃破（爆弾は導火前に解除される）。
+      this.stompFrame = frame;
       this.enemyManager.kill(eSprite);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');

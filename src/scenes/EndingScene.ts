@@ -280,8 +280,11 @@ export class EndingScene extends Phaser.Scene {
       this.tweens.add({ targets: this.clockFaceDay, alpha: 1, duration: 900, ease: 'Quad.easeIn' });
     }
     // 分針は速く、時針はゆっくり連続回転（角度 tween）。
-    this.tweens.add({ targets: this.clockMin, angle: 360, duration: 2400, repeat: -1, ease: 'Linear' });
-    this.tweens.add({ targets: this.clockHour, angle: 360, duration: 14400, repeat: -1, ease: 'Linear' });
+    // 絶対値 360 を終点にすると、開始角が非0の針（分針 48° / 時針 -56°）はループ末で
+    // 0° に達した後に開始角へ瞬間ジャンプし、12時付近でモーションが切れて見える。
+    // 開始角 + 360（≡ 開始角）を終点にすることで、ループ境界が連続しシームレスに回り続ける。
+    this.tweens.add({ targets: this.clockMin, angle: this.clockMin.angle + 360, duration: 2400, repeat: -1, ease: 'Linear' });
+    this.tweens.add({ targets: this.clockHour, angle: this.clockHour.angle + 360, duration: 14400, repeat: -1, ease: 'Linear' });
   }
 
   /** 空を晴れさせる（晴れレイヤ・太陽・光条をフェードイン）。 */
