@@ -4,7 +4,7 @@ import {
   BOSS_MAX_HP,
   BOSS_INTRO_MS,
   BOSS_ATTACK_MS,
-  BOSS_VULN_MS,
+  BOSS_STAGGER_MS,
   BOSS_PENDULUM_PIVOT_Y,
   BOSS_PENDULUM_LENGTH,
   BOSS_PENDULUM_AMP_RAD,
@@ -16,18 +16,11 @@ import {
   BOSS_GEAR_RAIN_SIZE,
   BOSS_GEAR_RAIN_BODY,
   BOSS_GEAR_RAIN_VY,
-  BOSS_CORE_SIZE,
-  BOSS_CORE_BODY,
-  BOSS_CORE_HIDDEN_Y,
-  BOSS_CORE_EXPOSED_Y,
-  BOSS_CORE_MOVE_MS,
-  BOSS_CORE_PULSE_MS,
-  BOSS_CORE_TINT,
   BOSS_CLOCK_BRASS,
   BOSS_CLOCK_BRASS_DARK
 } from '../config/gameConfig';
 
-export type BossState = 'intro' | 'attack' | 'vulnerable' | 'defeated';
+export type BossState = 'intro' | 'attack' | 'stagger' | 'defeated';
 
 /** 振り子の運動学パラメータ。 */
 export interface PendulumParams {
@@ -73,9 +66,10 @@ export interface BossCallbacks {
 }
 
 /**
- * ボス「グランドファーザー」の状態機械・攻撃・弱点コアを駆動する（design §コンポーネント2）。
- * 可動物（振り子の錘・弱点コア・落下歯車）を生成・保持し、踏みつけ被ダメージは BossScene 側で
- * 判定して `hit()` を呼ぶ。プレイヤーへの加害（被弾）判定も BossScene の overlap 登録に委ねる。
+ * ボス「グランドファーザー」の状態機械・攻撃を駆動する（design §コンポーネント2）。
+ * 可動物（振り子の錘・落下歯車）を生成・保持する。撃破ダメージは「振り子の錘を上から踏む」方式で、
+ * 踏みつけ成立は BossScene 側で判定して `hit()` を呼ぶ（20260603 リワーク）。
+ * プレイヤーへの加害（被弾）判定も BossScene の overlap 登録に委ねる。
  */
 export class BossController {
   private state: BossState = 'intro';
@@ -87,13 +81,11 @@ export class BossController {
   private lastGearRainAt = 0;
 
   private arm!: Phaser.GameObjects.Graphics;
-  private corePulse: Phaser.Tweens.Tween | null = null;
-  private coreMoveTween: Phaser.Tweens.Tween | null = null;
+  /** 攻撃中、錘が「踏める対象」であることを示すスケール脈動。stagger/defeat で停止。 */
+  private bobPulse: Phaser.Tweens.Tween | null = null;
 
-  /** 振り子の錘（攻撃中に床を薙ぐ）。BossScene が overlap 登録する。 */
+  /** 振り子の錘（攻撃中に床を薙ぐ／上から踏むとダメージ）。BossScene が overlap 登録する。 */
   bob!: Phaser.Physics.Arcade.Sprite;
-  /** 弱点コア（踏みつけ対象）。 */
-  core!: Phaser.Physics.Arcade.Sprite;
   /** 落下歯車グループ。 */
   gearRain!: Phaser.Physics.Arcade.Group;
 
@@ -121,16 +113,6 @@ export class BossController {
     bobBody.setCircle(BOSS_PENDULUM_BOB_BODY / 2, bobOffset, bobOffset);
     bobBody.enable = false;
 
-    // 弱点コア（光る歯車。tint で発光）
-    this.core = this.scene.physics.add.sprite(this.arena.pivotX, BOSS_CORE_HIDDEN_Y, TEX_KEY.bossCore);
-    this.core.setDepth(2);
-    this.core.setTint(BOSS_CORE_TINT);
-    const coreBody = this.core.body as Phaser.Physics.Arcade.Body;
-    coreBody.setAllowGravity(false);
-    const coreOffset = (BOSS_CORE_SIZE - BOSS_CORE_BODY) / 2;
-    coreBody.setCircle(BOSS_CORE_BODY / 2, coreOffset, coreOffset);
-    coreBody.enable = false;
-
     // 落下歯車グループ
     this.gearRain = this.scene.physics.add.group();
   }
@@ -148,9 +130,9 @@ export class BossController {
     return BOSS_MAX_HP;
   }
 
-  /** 弱点が露出中か（踏みつけでダメージが入る窓）。 */
-  get isVulnerable(): boolean {
-    return this.state === 'vulnerable';
+  /** 攻撃中（振り子が振れ、上から踏むとダメージが入る窓）か。 */
+  get isAttacking(): boolean {
+    return this.state === 'attack';
   }
 
   get isDefeated(): boolean {
@@ -168,26 +150,26 @@ export class BossController {
         this.updatePendulum(now);
         this.maybeSpawnGearRain(now);
         this.cullGearRain();
-        if (now >= this.stateUntil) this.enterVulnerable(now);
+        if (now >= this.stateUntil) this.enterStagger(now);
         break;
-      case 'vulnerable':
+      case 'stagger':
         this.parkPendulum();
         this.cullGearRain();
         if (now >= this.stateUntil) this.enterAttack(now);
         break;
       case 'defeated':
-        this.parkPendulum();
+        // 撃破後は collapse() の落下 tween に任せ、振り子を park し直さない。
         this.cullGearRain();
         break;
     }
   }
 
   /**
-   * 弱点コアへの踏みつけ成立時に呼ぶ。露出窓のときのみ HP を減らす。
-   * 撃破したら true を返す。
+   * 振り子の錘への踏みつけ成立時に呼ぶ。攻撃中のみ HP を減らす。
+   * 戻り値 true = ダメージが入った（撃破有無は問わない）／false = 攻撃中でなく無効。
    */
   hit(): boolean {
-    if (this.state !== 'vulnerable') return false;
+    if (this.state !== 'attack') return false;
     this.damageTaken += 1;
     this.hp = Math.max(0, this.hp - 1);
     this.callbacks.onHpChanged(this.hp, BOSS_MAX_HP);
@@ -197,20 +179,40 @@ export class BossController {
       this.callbacks.onDefeated();
       return true;
     }
-    // 生存: コアを格納して攻撃フェーズへ（小休止を与える）。
-    this.enterAttack(this.scene.time.now);
+    // 生存: 短くよろけて（多重ヒット防止）から攻撃へ復帰（ω 加速）。
+    this.enterStagger(this.scene.time.now);
     return true;
+  }
+
+  /** 撃破演出（BossScene.onBossDefeated）から呼ぶ。錘を床へ落下させ、腕を断つ。 */
+  collapse(): void {
+    this.bobPulse?.stop();
+    this.bobPulse = null;
+    this.disableBob();
+    this.bob.setScale(1);
+    this.arm?.clear();
+    const floorY = this.arena.floorTopY - BOSS_PENDULUM_BOB_RADIUS;
+    this.scene.tweens.add({
+      targets: this.bob,
+      y: floorY,
+      duration: 900,
+      ease: 'Bounce.easeOut'
+    });
+    this.scene.tweens.add({
+      targets: this.bob,
+      angle: this.bob.angle + 540,
+      duration: 900,
+      ease: 'Cubic.easeOut'
+    });
   }
 
   destroy(): void {
     // tween を止めて破棄中オブジェクトへのコールバック発火を防ぐ。
-    // 可動物（arm/bob/core/gearRain）の破棄は Phaser のシーン shutdown が担う。
+    // 可動物（arm/bob/gearRain）の破棄は Phaser のシーン shutdown が担う。
     // ここで gearRain.clear/destroy を呼ぶと、物理ワールドの shutdown と競合して
     // 例外（undefined.size）でゲームループが落ちるため、明示破棄はしない。
-    this.corePulse?.stop();
-    this.coreMoveTween?.stop();
-    this.corePulse = null;
-    this.coreMoveTween = null;
+    this.bobPulse?.stop();
+    this.bobPulse = null;
   }
 
   // --- 状態遷移 ---
@@ -219,7 +221,7 @@ export class BossController {
     this.state = 'intro';
     this.stateUntil = now + BOSS_INTRO_MS;
     this.disableBob();
-    this.retractCore();
+    this.stopBobPulse();
   }
 
   private enterAttack(now: number): void {
@@ -227,22 +229,54 @@ export class BossController {
     this.attackStartedAt = now;
     this.stateUntil = now + BOSS_ATTACK_MS;
     this.lastGearRainAt = now;
-    this.retractCore();
     const bobBody = this.bob.body as Phaser.Physics.Arcade.Body;
     bobBody.enable = true;
+    this.startBobPulse();
   }
 
-  private enterVulnerable(now: number): void {
-    this.state = 'vulnerable';
-    this.stateUntil = now + BOSS_VULN_MS;
+  private enterStagger(now: number): void {
+    this.state = 'stagger';
+    this.stateUntil = now + BOSS_STAGGER_MS;
     this.disableBob();
-    this.exposeCore();
+    this.stopBobPulse();
+    // よろけの点滅（無防備の合図）。stagger 終了で stopBobPulse がクリアする。
+    this.bob.setAlpha(1);
+    this.bobPulse = this.scene.tweens.add({
+      targets: this.bob,
+      alpha: 0.35,
+      duration: 140,
+      yoyo: true,
+      repeat: -1
+    });
   }
 
   private enterDefeated(): void {
     this.state = 'defeated';
     this.disableBob();
-    this.retractCore();
+    this.stopBobPulse();
+  }
+
+  /** 攻撃中、錘に「踏める対象」を示すスケール脈動を付ける。 */
+  private startBobPulse(): void {
+    this.stopBobPulse();
+    this.bob.setScale(1);
+    this.bob.setAlpha(1);
+    this.bobPulse = this.scene.tweens.add({
+      targets: this.bob,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      duration: 420,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private stopBobPulse(): void {
+    this.bobPulse?.stop();
+    this.bobPulse = null;
+    this.bob?.setScale(1);
+    this.bob?.setAlpha(1);
   }
 
   // --- 振り子 ---
@@ -313,45 +347,5 @@ export class BossController {
       return true;
     });
     for (const gear of toRemove) gear.destroy();
-  }
-
-  // --- 弱点コア ---
-
-  private exposeCore(): void {
-    this.coreMoveTween?.stop();
-    this.corePulse?.stop();
-    this.core.setScale(1);
-    const body = this.core.body as Phaser.Physics.Arcade.Body;
-    body.enable = true;
-    this.coreMoveTween = this.scene.tweens.add({
-      targets: this.core,
-      y: BOSS_CORE_EXPOSED_Y,
-      duration: BOSS_CORE_MOVE_MS,
-      ease: 'Quad.easeOut'
-    });
-    this.corePulse = this.scene.tweens.add({
-      targets: this.core,
-      scaleX: 1.14,
-      scaleY: 1.14,
-      duration: BOSS_CORE_PULSE_MS,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-
-  private retractCore(): void {
-    this.corePulse?.stop();
-    this.corePulse = null;
-    this.coreMoveTween?.stop();
-    this.core.setScale(1);
-    const body = this.core?.body as Phaser.Physics.Arcade.Body | undefined;
-    if (body) body.enable = false;
-    this.coreMoveTween = this.scene.tweens.add({
-      targets: this.core,
-      y: BOSS_CORE_HIDDEN_Y,
-      duration: BOSS_CORE_MOVE_MS,
-      ease: 'Quad.easeIn'
-    });
   }
 }

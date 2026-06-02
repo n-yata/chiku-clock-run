@@ -44,6 +44,8 @@ export const TEX_KEY = {
   /** チクタク爆弾（追尾自爆敵）のスプライトシート。 */
   bombSheet: 'bomb_sheet',
   gearBit: 'gear_bit',
+  /** 回復アイテム「予備ゼンマイ」（真鍮歯車枠＋ルビーのハート）。 */
+  healItem: 'heal_item',
   /** 演出用パーティクル（白い小ドット）。tint で各演出色に着色する。 */
   particle: 'particle_dot',
   /** ゲーム背景タイル（ワークショップの夜景シルエット）。 */
@@ -160,6 +162,17 @@ export const BOMB_SHAKE_INTENSITY = 0.012;
 export const GEAR_BIT_SPRITE_W = 32;
 export const GEAR_BIT_SPRITE_H = 32;
 export const GEAR_BIT_COLOR = 0xc9973a;
+
+// --- 回復アイテム「予備ゼンマイ」(Heal Item) ---
+/** 回復アイテムの表示サイズ (px)。 */
+export const HEAL_ITEM_SPRITE_W = 28;
+export const HEAL_ITEM_SPRITE_H = 28;
+/** 真鍮の歯車枠の色。 */
+export const HEAL_ITEM_BRASS_COLOR = 0xc9973a;
+/** 中央のハート（ルビー）の色。 */
+export const HEAL_ITEM_HEART_COLOR = 0xff4d6d;
+/** ハートのハイライト色。 */
+export const HEAL_ITEM_HEART_GLOW = 0xffd9e0;
 
 // --- v0.2: ミス演出 ---
 export const MISS_FLASH_MS = 150;
@@ -489,8 +502,11 @@ export const BOSS_MAX_HP = 3;
 export const BOSS_INTRO_MS = 1500;
 /** 攻撃フェーズ（振り子 + 歯車落下）の長さ (ms)。経過で弱点露出へ移行。 */
 export const BOSS_ATTACK_MS = 5000;
-/** 弱点露出フェーズの長さ (ms)。経過 or 被弾で攻撃へ戻る。 */
+/** 弱点露出フェーズの長さ (ms)。経過 or 被弾で攻撃へ戻る。
+ *  ※踏みつけ対象を振り子へ変更（20260603）したため現在は未使用。互換のため残置。 */
 export const BOSS_VULN_MS = 3500;
+/** 踏み成功直後のよろけ（stagger）の長さ (ms)。この間は振り子の当たり判定を無効化し再ヒット不可。 */
+export const BOSS_STAGGER_MS = 1000;
 /** 撃破時の画面シェイク (ms) と強度。 */
 export const BOSS_DEFEAT_SHAKE_MS = 700;
 export const BOSS_DEFEAT_SHAKE_INTENSITY = 0.02;

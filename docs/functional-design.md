@@ -105,7 +105,7 @@ sequenceDiagram
 | BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・背景の Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
 | TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
 | GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する。最終ステージクリア時は `BossScene` へ遷移 |
-| BossScene | `src/scenes/BossScene.ts` | ラスボス戦シーン。固定アリーナをプログラム生成し、`BossController`（振り子の大時計「グランドファーザー」）と `BossHpBar` を統合。弱点コアの踏みつけで撃破し `EndingScene` へ遷移。被弾・ライフ・ゲームオーバーは GameScene と同方式 |
+| BossScene | `src/scenes/BossScene.ts` | ラスボス戦シーン。固定アリーナをプログラム生成し、`BossController`（振り子の大時計「グランドファーザー」）と `BossHpBar` を統合。**振り子の錘を上から踏みつけ**て撃破し `EndingScene` へ遷移。被弾・ライフ・ゲームオーバーは GameScene と同方式 |
 | マネージャ群 | `src/game/` | `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler` の 8 クラス。プレーンクラス（Scene 非継承）として scene を受け取り責務を実行する |
 | ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
 | ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
@@ -179,6 +179,7 @@ interface StageDefinition {
 | `B` | チクタク爆弾（追尾自爆敵）スポーン | 真下が `#` 必須 |
 | 敵合計（`E`+`F`+`B`） | — | 1〜`MAX_ENEMIES_PER_STAGE`（20）個 |
 | `C` | 歯車片 | 1〜30 個 |
+| `H` | 回復アイテム「予備ゼンマイ」 | 各ステージちょうど 1 個・取得でライフ +1（上限 `INITIAL_LIVES`=3） |
 
 #### BuiltStage（buildStage() 生成物）
 
@@ -189,6 +190,7 @@ interface BuiltStage {
   enemies: Phaser.Physics.Arcade.Group;       // 敵 Sprite 群（動的）
   gearBits: Phaser.Physics.Arcade.StaticGroup;  // 歯車片 Sprite 群（静的）
   gearBitTotal: number;                         // ステージ内歯車片総数
+  healItems: Phaser.Physics.Arcade.StaticGroup; // 回復アイテム「予備ゼンマイ」群（静的・各ステージ1個）
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;  // 地面有無マスク（敵AI用）
   spawnX: number;                             // プレイヤー初期 X 座標
   spawnY: number;                             // プレイヤー初期 Y 座標
@@ -228,7 +230,7 @@ stateDiagram-v2
     Playing --> Playing : R キー（同ステージを再起動）
 ```
 
-ボス戦（`BossScene`）の状態遷移は別途 `BossController` の状態機械（`intro` → `attack` ⇄ `vulnerable` → `defeated`）が駆動する。`attack` は振り子スイープ + 落下歯車、`vulnerable` は弱点コアの露出で、コアを 3 回踏みつけると `defeated` → `EndingScene` へ遷移する。
+ボス戦（`BossScene`）の状態遷移は別途 `BossController` の状態機械（`intro` → `attack` ⇄ `stagger` → `defeated`）が駆動する。`attack` は振り子スイープ + 落下歯車で、**振り子の錘を上から踏む**とダメージが入る。被ダメージ直後は `stagger`（短いよろけ・当たり判定無効・点滅）で多重ヒットを防ぎ、攻撃へ復帰するたびに振り子の角速度が 1 段上がる。錘を 3 回踏みつける（HP=0）と `defeated` → `EndingScene` へ遷移する。（旧仕様の弱点コア露出方式は 20260603 に廃止。）
 
 - `isCleared` / `isMissed` フラグが立った後は `update()` でプレイヤー速度を 0 に固定
 - ミス時はプレイヤーを白くフラッシュ（`MISS_FLASH_COLOR`）し `MISS_FLASH_MS` 後に同ステージを再起動

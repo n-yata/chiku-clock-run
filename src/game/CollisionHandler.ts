@@ -7,6 +7,7 @@ export interface CollisionTargets {
   goal: Phaser.Physics.Arcade.Sprite;
   enemies: Phaser.Physics.Arcade.Group;
   gearBits: Phaser.Physics.Arcade.StaticGroup;
+  healItems: Phaser.Physics.Arcade.StaticGroup;
 }
 
 /** overlap/collider のコールバック群（本体は GameScene 側ファサードに残す, D-004）。 */
@@ -14,6 +15,7 @@ export interface CollisionHandlers {
   onGoalHit: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
   onEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
   onGearBitOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
+  onHealItemOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 }
 
 /**
@@ -40,6 +42,7 @@ export class CollisionHandler {
     physics.add.overlap(t.player, t.goal, h.onGoalHit, undefined, this.context);
     physics.add.overlap(t.player, t.enemies, h.onEnemyOverlap, undefined, this.context);
     physics.add.overlap(t.player, t.gearBits, h.onGearBitOverlap, undefined, this.context);
+    physics.add.overlap(t.player, t.healItems, h.onHealItemOverlap, undefined, this.context);
 
     return playerGroundCollider;
   }

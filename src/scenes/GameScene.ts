@@ -4,6 +4,8 @@ import {
   BGM_FADE_OUT_MS,
   GEAR_BIT_SPRITE_H,
   GEAR_BIT_SPRITE_W,
+  HEAL_ITEM_SPRITE_W,
+  HEAL_ITEM_SPRITE_H,
   ENEMY_SPEED,
   ENEMY_SPRITE_H,
   ENEMY_BODY_W,
@@ -70,6 +72,7 @@ interface BuiltStage {
   enemies: Phaser.Physics.Arcade.Group;
   gearBits: Phaser.Physics.Arcade.StaticGroup;
   gearBitTotal: number;
+  healItems: Phaser.Physics.Arcade.StaticGroup;
   groundMask: ReadonlyArray<ReadonlyArray<boolean>>;
 }
 
@@ -86,6 +89,7 @@ export class GameScene extends Phaser.Scene {
   private gearBits!: Phaser.Physics.Arcade.StaticGroup;
   private gearBitTotal = 0;
   private gearBitsCollected = 0;
+  private healItems!: Phaser.Physics.Arcade.StaticGroup;
   // 全ステージ通算の歯車数（このステージ開始前までの累計）。クリア時にエンディングへ引き継ぐ。
   private priorGearsCollected = 0;
   private priorGearsTotal = 0;
@@ -160,6 +164,7 @@ export class GameScene extends Phaser.Scene {
     this.enemies = built.enemies;
     this.gearBits = built.gearBits;
     this.gearBitTotal = built.gearBitTotal;
+    this.healItems = built.healItems;
     this.groundMask = built.groundMask;
 
     // 遠景ベース（フラットな基調色。タイルの隙間や端を埋めて奥行きの土台にする）
@@ -190,12 +195,14 @@ export class GameScene extends Phaser.Scene {
         ground: built.ground,
         goal: built.goal,
         enemies: this.enemies,
-        gearBits: this.gearBits
+        gearBits: this.gearBits,
+        healItems: this.healItems
       },
       {
         onGoalHit: this.onGoalHit,
         onEnemyOverlap: this.onEnemyOverlap,
-        onGearBitOverlap: this.onGearBitOverlap
+        onGearBitOverlap: this.onGearBitOverlap,
+        onHealItemOverlap: this.onHealItemOverlap
       }
     );
 
@@ -339,6 +346,7 @@ export class GameScene extends Phaser.Scene {
     let goalRow = -1;
     const enemyPositions: Array<{ col: number; row: number; type: EnemyType }> = [];
     const gearBitPositions: Array<{ col: number; row: number }> = [];
+    const healPositions: Array<{ col: number; row: number }> = [];
 
     for (let r = 0; r < def.rows; r++) {
       const line = def.tiles[r];
@@ -363,6 +371,8 @@ export class GameScene extends Phaser.Scene {
           enemyPositions.push({ col: c, row: r, type: 'bomb' });
         } else if (ch === 'C') {
           gearBitPositions.push({ col: c, row: r });
+        } else if (ch === 'H') {
+          healPositions.push({ col: c, row: r });
         } else if (ch !== '.' && ch !== '#') {
           throw new Error(`Stage ${def.id}: unknown tile '${ch}' at row ${r} col ${c}`);
         }
@@ -387,6 +397,12 @@ export class GameScene extends Phaser.Scene {
     if (gearBitPositions.length < 1 || gearBitPositions.length > 30) {
       throw new Error(
         `Stage ${def.id}: 'C' Gear Bit count must be 1..30 (got ${gearBitPositions.length})`
+      );
+    }
+    // 回復アイテム「予備ゼンマイ」は各ステージちょうど 1 個に固定する（救済を1回に限定）。
+    if (healPositions.length !== 1) {
+      throw new Error(
+        `Stage ${def.id}: 'H' Heal Item count must be exactly 1 (got ${healPositions.length})`
       );
     }
     // 地上敵（winder='E' / bomb='B'）は地面の真上に置かないと出現直後に落下するため弾く。
@@ -432,6 +448,7 @@ export class GameScene extends Phaser.Scene {
     const groundMask = this.buildGroundMask(def);
     const enemies = this.buildEnemies(enemyPositions);
     const gearBitPair = this.buildGearBits(gearBitPositions);
+    const healItems = this.buildHealItems(healPositions);
 
     return {
       ground,
@@ -439,6 +456,7 @@ export class GameScene extends Phaser.Scene {
       enemies,
       gearBits: gearBitPair.group,
       gearBitTotal: gearBitPair.total,
+      healItems,
       groundMask,
       spawnX: spawnCol * TILE_SIZE + TILE_SIZE / 2,
       spawnY: (spawnRow + 1) * TILE_SIZE - PLAYER_SPRITE_H / 2
@@ -546,6 +564,34 @@ export class GameScene extends Phaser.Scene {
     this.gearBitsCollected++;
     this.audio.playSe('gearBit');
     this.hud.setGear(this.gearBitsCollected, this.gearBitTotal);
+  };
+
+  private buildHealItems(
+    positions: Array<{ col: number; row: number }>
+  ): Phaser.Physics.Arcade.StaticGroup {
+    const group = this.physics.add.staticGroup();
+    for (const p of positions) {
+      // 歯車片と同じくタイル中心配置。
+      const cx = p.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = p.row * TILE_SIZE + TILE_SIZE / 2;
+      const item = group.create(cx, cy, TEX_KEY.healItem) as Phaser.Physics.Arcade.Sprite;
+      item.setDisplaySize(HEAL_ITEM_SPRITE_W, HEAL_ITEM_SPRITE_H);
+      item.refreshBody();
+    }
+    return group;
+  }
+
+  private onHealItemOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, healItem) => {
+    if (this.isCleared || this.isMissed) return;
+    const sprite = healItem as Phaser.Physics.Arcade.Sprite;
+    // ライフ +1（上限 INITIAL_LIVES=3 でキャップ）。満タンでも取得演出は出してスプライトは消費する。
+    if (this.lives < INITIAL_LIVES) {
+      this.lives += 1;
+      this.hud.setLives(this.lives);
+    }
+    this.particles.celebrate(sprite.x, sprite.y);
+    this.audio.playSe('beacon');
+    sprite.disableBody(true, true);
   };
 
   private onEnemyOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, enemy) => {
@@ -691,6 +737,7 @@ export class GameScene extends Phaser.Scene {
   private teardownPhysics(): void {
     this.physics.world.colliders.destroy();
     if (this.gearBits) this.gearBits.clear(true, true);
+    if (this.healItems) this.healItems.clear(true, true);
     if (this.enemies) this.enemies.clear(true, true);
   }
 

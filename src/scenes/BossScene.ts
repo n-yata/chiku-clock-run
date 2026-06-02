@@ -95,6 +95,8 @@ export class BossScene extends Phaser.Scene {
 
   private ground!: Phaser.Physics.Arcade.StaticGroup;
   private bgOverlay!: Phaser.GameObjects.Image;
+  /** 大時計（ボス本体）の Graphics。撃破演出でフェード崩壊させるため保持する。 */
+  private bossClock!: Phaser.GameObjects.Graphics;
   private playerGroundCollider: Phaser.Physics.Arcade.Collider | null = null;
   private pendingAdvance: (() => void) | null = null;
 
@@ -177,9 +179,8 @@ export class BossScene extends Phaser.Scene {
       sprite.disableBody(true, false);
       this.time.delayedCall(0, () => sprite.destroy());
     });
-    this.physics.add.overlap(this.player, this.boss.bob, this.onHazardOverlap, undefined, this);
+    this.physics.add.overlap(this.player, this.boss.bob, this.onBobOverlap, undefined, this);
     this.physics.add.overlap(this.player, this.boss.gearRain, this.onGearRainOverlap, undefined, this);
-    this.physics.add.overlap(this.player, this.boss.core, this.onCoreOverlap, undefined, this);
 
     // 入力
     if (!this.input.keyboard) {
@@ -228,6 +229,7 @@ export class BossScene extends Phaser.Scene {
 
     this.events.once('shutdown', () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.layoutView, this);
+      this.physics.world.timeScale = 1; // スロー演出中の遷移に備えて必ず復帰
       this.audio.destroy();
       this.touch.destroy();
       this.powerUps.destroy();
@@ -311,7 +313,7 @@ export class BossScene extends Phaser.Scene {
 
   /** 大時計（ボス本体）を Graphics で描く。可動物・プレイヤーの背面（depth -5）。 */
   private drawBossClock(): void {
-    const g = this.add.graphics().setDepth(-5);
+    const g = this.bossClock = this.add.graphics().setDepth(-5);
     const cx = this.worldWidth / 2;
     const fy = BOSS_CLOCK_FACE_Y;
     const R = BOSS_CLOCK_FACE_RADIUS;
@@ -381,31 +383,20 @@ export class BossScene extends Phaser.Scene {
 
   // --- 衝突コールバック ---
 
-  private onHazardOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = () => {
+  /**
+   * 振り子の錘との接触。上から踏めばボスにダメージ、横/下からなら被弾（敵踏みと同型, 20260603）。
+   */
+  private onBobOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, bob) => {
     if (this.isMissed || this.isBossDefeated) return;
-    this.handleMiss('enemy');
-  };
-
-  private onGearRainOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, gear) => {
-    if (this.isMissed || this.isBossDefeated) return;
-    const sprite = gear as Phaser.Physics.Arcade.Sprite;
-    sprite.disableBody(true, false);
-    this.time.delayedCall(0, () => sprite.destroy());
-    this.handleMiss('enemy');
-  };
-
-  private onCoreOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, core) => {
-    if (this.isMissed || this.isBossDefeated) return;
-    if (!this.boss.isVulnerable) return;
-
+    // 攻撃中のみ踏みつけ判定が成立する（stagger/intro は body 無効なので原則発火しない）。
+    const bobSprite = bob as Phaser.Physics.Arcade.Sprite;
     const pBody = this.player.body as Phaser.Physics.Arcade.Body;
-    const cBody = (core as Phaser.Physics.Arcade.Sprite).body as Phaser.Physics.Arcade.Body;
-    const onTop = pBody.center.y <= cBody.center.y;
+    const bBody = bobSprite.body as Phaser.Physics.Arcade.Body;
+    const onTop = pBody.center.y <= bBody.center.y;
     const isStomp = onTop && pBody.velocity.y > 0;
 
-    if (isStomp) {
-      const coreSprite = core as Phaser.Physics.Arcade.Sprite;
-      this.particles.burstEnemy(coreSprite.x, coreSprite.y);
+    if (isStomp && this.boss.isAttacking) {
+      this.particles.burstEnemy(bobSprite.x, bobSprite.y);
       this.player.setVelocityY(STOMP_BOUNCE_VELOCITY);
       this.audio.playSe('stomp');
       this.applyHitstop();
@@ -414,6 +405,16 @@ export class BossScene extends Phaser.Scene {
     }
 
     if (this.isInvincible) return;
+    this.handleMiss('enemy');
+  };
+
+  private onGearRainOverlap: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_player, gear) => {
+    if (this.isMissed || this.isBossDefeated) return;
+    // 無敵中は歯車を消費しない（onBobOverlap / GameScene.onEnemyOverlap と対称）。
+    if (this.isInvincible) return;
+    const sprite = gear as Phaser.Physics.Arcade.Sprite;
+    sprite.disableBody(true, false);
+    this.time.delayedCall(0, () => sprite.destroy());
     this.handleMiss('enemy');
   };
 
@@ -479,14 +480,34 @@ export class BossScene extends Phaser.Scene {
     this.player.setVelocity(0, 0);
     this.audio.stopBgm(BGM_FADE_OUT_MS);
 
+    // 決着の溜め: 一瞬の白フラッシュ + 物理スローモーション（必ず 1.0 へ復帰させる）。
+    // ※ this.time.timeScale は絞らない（タイマー/トゥイーン/リセットまで遅延し不安定になるため）。
+    //   Arcade Physics は timeScale が大きいほど遅くなる（実質「逆数」的）。
+    this.cameras.main.flash(260, 255, 255, 255);
+    this.physics.world.timeScale = 2.2;
+    this.time.delayedCall(600, () => {
+      this.physics.world.timeScale = 1;
+    });
+
     this.cameras.main.shake(BOSS_DEFEAT_SHAKE_MS, BOSS_DEFEAT_SHAKE_INTENSITY);
-    // 大時計の崩壊バースト（中心で複数回）
+
+    // 振り子の落下と大時計のフェード崩壊。
+    this.boss.collapse();
+    this.tweens.add({
+      targets: this.bossClock,
+      alpha: 0,
+      duration: 1300,
+      delay: 400,
+      ease: 'Quad.easeIn'
+    });
+
+    // 大時計の崩壊バースト（中心で複数回・拡散を増やして盛り上げる）。
     const cx = this.worldWidth / 2;
-    for (let i = 0; i < 5; i++) {
-      this.time.delayedCall(i * 180, () => {
+    for (let i = 0; i < 9; i++) {
+      this.time.delayedCall(i * 150, () => {
         this.particles.burstExplosion(
-          cx + Phaser.Math.Between(-60, 60),
-          BOSS_CLOCK_FACE_Y + Phaser.Math.Between(-40, 40)
+          cx + Phaser.Math.Between(-90, 90),
+          BOSS_CLOCK_FACE_Y + Phaser.Math.Between(-60, 60)
         );
         this.audio.playSe('explode');
       });
@@ -551,6 +572,11 @@ export class BossScene extends Phaser.Scene {
   }
 
   private showIntroBanner(): void {
+    // 登場演出: 番人の鐘（チャイム）＋ 軽い地響き（カメラ揺れ）＋ 一瞬の赤フラッシュ。
+    this.audio.playSe('beacon');
+    this.cameras.main.shake(360, 0.008);
+    this.cameras.main.flash(420, 90, 10, 10);
+
     const banner = this.hud.showCenterMessage(BOSS_INTRO_TEXT, {
       color: BOSS_INTRO_TEXT_COLOR,
       fontSize: CENTER_MSG_FONT_SIZE

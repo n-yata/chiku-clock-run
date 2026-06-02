@@ -14,6 +14,8 @@ import {
   BOMB_BODY_COLOR, BOMB_BODY_DARK_COLOR, BOMB_FACE_COLOR, BOMB_TICK_COLOR, BOMB_SPARK_COLOR,
   BEACON_SPRITE_W, BEACON_SPRITE_H, BEACON_COLOR,
   PARTICLE_DOT_SIZE,
+  HEAL_ITEM_SPRITE_W, HEAL_ITEM_SPRITE_H,
+  HEAL_ITEM_BRASS_COLOR, HEAL_ITEM_HEART_COLOR, HEAL_ITEM_HEART_GLOW,
   BOSS_PENDULUM_BOB_RADIUS, BOSS_GEAR_RAIN_SIZE, BOSS_CORE_SIZE,
   BOSS_CLOCK_BRASS, BOSS_CLOCK_BRASS_DARK
 } from '../config/gameConfig';
@@ -1238,4 +1240,80 @@ export function buildBossTextures(scene: Phaser.Scene): void {
     ctx.beginPath(); ctx.arc(c, c, size * 0.16, 0, Math.PI * 2);
     ctx.fillStyle = '#fff7e0'; ctx.fill();
   });
+}
+
+/**
+ * 回復アイテム「予備ゼンマイ」のテクスチャを生成する。
+ * 真鍮の歯車枠の中央にルビーのハートを据えた、時計工房世界観のお守り。
+ * 高解像度（4x）で描いてからダウンスケールして滑らかにする。
+ */
+export function buildHealItemTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(TEX_KEY.healItem)) return;
+  const frameW = HEAL_ITEM_SPRITE_W * 2;  // 表示(28)の 2 倍テクスチャで精細化
+  const frameH = HEAL_ITEM_SPRITE_H * 2;
+  const SS = 2;                            // さらに 2x で描いてダウンスケール
+  const drawW = frameW * SS;
+  const drawH = frameH * SS;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = frameW;
+  canvas.height = frameH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = true;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = drawW;
+  tmp.height = drawH;
+  const t = tmp.getContext('2d');
+  if (!t) throw new Error('canvas 2d context unavailable');
+  t.imageSmoothingEnabled = true;
+
+  drawHealItem(t, drawW, drawH);
+  ctx.drawImage(tmp, 0, 0, drawW, drawH, 0, 0, frameW, frameH);
+
+  if (!scene.textures.addCanvas(TEX_KEY.healItem, canvas)) {
+    throw new Error(`Failed to create texture: ${TEX_KEY.healItem}`);
+  }
+}
+
+/** 真鍮歯車枠＋ルビーのハートを w×h 空間の中央に描く。 */
+function drawHealItem(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  const brassLight = shade(HEAL_ITEM_BRASS_COLOR, 1.3);
+  const brassMid = toHex(HEAL_ITEM_BRASS_COLOR);
+  const brassDark = shade(HEAL_ITEM_BRASS_COLOR, 0.55);
+
+  // 背面の真鍮歯車枠（お守りの台座）。drawCenteredGear は size 空間の中心へ自前で配置する。
+  // 第3引数は歯数。w==h（正方）前提で size=w を渡す。
+  drawCenteredGear(ctx, Math.min(w, h), 10, brassLight, brassDark, brassDark, brassMid);
+
+  // 中央のルビーのハート
+  const heartW = w * 0.5;
+  const heartH = h * 0.46;
+  const topY = cy - heartH * 0.28;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + heartH * 0.48);
+  ctx.bezierCurveTo(cx + heartW * 0.62, cy + heartH * 0.05, cx + heartW * 0.5, topY - heartH * 0.34, cx, topY + heartH * 0.06);
+  ctx.bezierCurveTo(cx - heartW * 0.5, topY - heartH * 0.34, cx - heartW * 0.62, cy + heartH * 0.05, cx, cy + heartH * 0.48);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(cx - heartW * 0.4, topY, cx + heartW * 0.4, cy + heartH * 0.48);
+  grad.addColorStop(0, toHex(HEAL_ITEM_HEART_GLOW));
+  grad.addColorStop(0.4, toHex(HEAL_ITEM_HEART_COLOR));
+  grad.addColorStop(1, shade(HEAL_ITEM_HEART_COLOR, 0.7));
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.lineWidth = w * 0.03;
+  ctx.strokeStyle = brassMid;
+  ctx.stroke();
+
+  // ハイライト（左上の光沢）
+  ctx.beginPath();
+  ctx.ellipse(cx - heartW * 0.18, topY + heartH * 0.12, heartW * 0.12, heartH * 0.1, -0.5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fill();
+  ctx.restore();
 }
