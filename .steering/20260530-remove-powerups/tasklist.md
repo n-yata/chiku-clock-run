@@ -84,7 +84,7 @@
 - [x] `npm run typecheck` / `npm run build` / `npm run test:e2e` 緑（7/7。初回コールドスタート flake は再実行で緑）
 - [x] クルトワ（security-engineer）レビュー → Critical/High なし＝コミット可
 - [x] 実装後の振り返りを記録
-- [ ] コミット（push はシャビ承認後）
+- [x] コミット（main・push はシャビ承認後）
 
 ---
 
