@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GameScene } from './scenes/GameScene';
+import { BossScene } from './scenes/BossScene';
 import { EndingScene } from './scenes/EndingScene';
 import { BG_COLOR, GRAVITY_Y } from './config/gameConfig';
 
@@ -31,10 +32,16 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.NO_CENTER
   },
-  scene: [BootScene, TitleScene, GameScene, EndingScene]
+  scene: [BootScene, TitleScene, GameScene, BossScene, EndingScene]
 };
 
 const game = new Phaser.Game(config);
+
+// デバッグ / E2E 用に game インスタンスを公開する（開発ビルドのみ）。
+// import.meta.env.DEV ガードで本番バンドルからは除外し、攻撃面を増やさない（クルトワ提案）。
+if (import.meta.env.DEV) {
+  (window as unknown as { game?: Phaser.Game }).game = game;
+}
 
 const getLandscapeSize = (): { w: number; h: number } => mq.matches
   ? { w: window.innerHeight, h: window.innerWidth }

@@ -13,7 +13,9 @@ import {
   BOMB_SPRITE_W, BOMB_SPRITE_H,
   BOMB_BODY_COLOR, BOMB_BODY_DARK_COLOR, BOMB_FACE_COLOR, BOMB_TICK_COLOR, BOMB_SPARK_COLOR,
   BEACON_SPRITE_W, BEACON_SPRITE_H, BEACON_COLOR,
-  PARTICLE_DOT_SIZE
+  PARTICLE_DOT_SIZE,
+  BOSS_PENDULUM_BOB_RADIUS, BOSS_GEAR_RAIN_SIZE, BOSS_CORE_SIZE,
+  BOSS_CLOCK_BRASS, BOSS_CLOCK_BRASS_DARK
 } from '../config/gameConfig';
 
 type PlayerFrame = 'idle' | 'idle_b' | 'walk1' | 'walk2' | 'walk3' | 'jump';
@@ -1136,4 +1138,104 @@ function beaconGear(ctx: CanvasRenderingContext2D, r: number, teeth: number, col
   ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = dark;
   ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2); ctx.fill();
+}
+
+// =====================================================================
+// 最後のボス「グランドファーザー」(20260602-final-boss)
+// 振り子の錘 / 落下歯車 / 弱点コアを、目標表示サイズと等しい実寸テクスチャで
+// 生成する（D-001: scale=1 を保ち当たり判定計算を 1:1 に保つ）。
+// =====================================================================
+
+/** size×size の正方キャンバスに中心配置の歯車を描く（外径 = size/2 - margin）。 */
+function drawCenteredGear(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  teeth: number,
+  fillLight: string,
+  fillDark: string,
+  stroke: string,
+  hubColor: string
+): void {
+  const c = size / 2;
+  const r = size / 2 - 3;
+  ctx.save();
+  ctx.translate(c, c);
+  ctx.lineJoin = 'round';
+  // 歯車本体
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const a = (i / (teeth * 2)) * Math.PI * 2;
+    const rad = i % 2 === 0 ? r : r * 0.78;
+    const px = rad * Math.cos(a);
+    const py = rad * Math.sin(a);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(-r, -r, r, r);
+  g.addColorStop(0, fillLight);
+  g.addColorStop(1, fillDark);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke();
+  // スポーク
+  ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(2, r * 0.12);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.7 * Math.cos(a), -r * 0.7 * Math.sin(a));
+    ctx.lineTo(r * 0.7 * Math.cos(a), r * 0.7 * Math.sin(a));
+    ctx.stroke();
+  }
+  // ハブ
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.26, 0, Math.PI * 2);
+  ctx.fillStyle = hubColor; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = stroke; ctx.stroke();
+  ctx.restore();
+}
+
+/** 1 枚の正方テクスチャを生成して登録するヘルパ。 */
+function buildSquareTexture(scene: Phaser.Scene, key: string, size: number, draw: (ctx: CanvasRenderingContext2D) => void): void {
+  if (scene.textures.exists(key)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.imageSmoothingEnabled = true;
+  draw(ctx);
+  if (!scene.textures.addCanvas(key, canvas)) {
+    throw new Error(`Failed to create texture: ${key}`);
+  }
+}
+
+/** ボスの可動物テクスチャ（錘・落下歯車・弱点コア）をまとめて生成する。 */
+export function buildBossTextures(scene: Phaser.Scene): void {
+  const brassLight = shade(BOSS_CLOCK_BRASS, 1.3);
+  const brassMid = toHex(BOSS_CLOCK_BRASS);
+  const brassDark = toHex(BOSS_CLOCK_BRASS_DARK);
+
+  // 振り子の錘（大きめの真鍮歯車）
+  buildSquareTexture(scene, TEX_KEY.bossBob, BOSS_PENDULUM_BOB_RADIUS * 2, (ctx) => {
+    drawCenteredGear(ctx, BOSS_PENDULUM_BOB_RADIUS * 2, 10, brassLight, brassDark, brassDark, brassMid);
+  });
+
+  // 落下歯車（小ぶりの真鍮歯車）
+  buildSquareTexture(scene, TEX_KEY.bossGear, BOSS_GEAR_RAIN_SIZE, (ctx) => {
+    drawCenteredGear(ctx, BOSS_GEAR_RAIN_SIZE, 8, brassLight, brassDark, brassDark, brassMid);
+  });
+
+  // 弱点コア（白めの歯車。tint=BOSS_CORE_TINT を controller で掛けて光らせる）
+  buildSquareTexture(scene, TEX_KEY.bossCore, BOSS_CORE_SIZE, (ctx) => {
+    const size = BOSS_CORE_SIZE;
+    const c = size / 2;
+    // 外周の光彩
+    const glow = ctx.createRadialGradient(c, c, size * 0.18, c, c, c);
+    glow.addColorStop(0, 'rgba(255,255,255,0.9)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
+    drawCenteredGear(ctx, size, 9, '#ffffff', '#d9d0c0', '#9a8c6c', '#fff3d0');
+    // 中心の発光コア
+    ctx.beginPath(); ctx.arc(c, c, size * 0.16, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff7e0'; ctx.fill();
+  });
 }

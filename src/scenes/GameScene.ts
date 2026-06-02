@@ -671,7 +671,8 @@ export class GameScene extends Phaser.Scene {
 
   private showAllClear(): void {
     this.isAllCleared = true;
-    // 全クリア演出は専用の EndingScene に委譲する。集めた歯車の通算をエンディングへ渡す。
+    // 最終ステージクリア後はラスボス戦（BossScene）へ。集めた歯車の通算とライフを引き継ぎ、
+    // ボス撃破後に BossScene からエンディングへ遷移する。
     const gearsCollected = this.priorGearsCollected + this.gearBitsCollected;
     const gearsTotal = this.priorGearsTotal + this.gearBitTotal;
     this.cameras.main.fadeOut(STAGE_FADE_MS, 0, 0, 0);
@@ -680,7 +681,7 @@ export class GameScene extends Phaser.Scene {
       if (started) return;
       started = true;
       this.teardownPhysics();
-      this.scene.start('EndingScene', { gearsCollected, gearsTotal });
+      this.scene.start('BossScene', { gearsCollected, gearsTotal, lives: this.lives });
     };
     this.cameras.main.once('camerafadeoutcomplete', go);
     // カメライベントが発火しない場合のセーフティタイマー

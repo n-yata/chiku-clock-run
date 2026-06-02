@@ -12,7 +12,8 @@ import {
   buildBeaconTexture,
   buildParticleTexture,
   buildBackgroundTile,
-  buildBackgroundOverlay
+  buildBackgroundOverlay,
+  buildBossTextures
 } from './spriteSheets';
 import { STAGES } from '../stages/index';
 
@@ -50,6 +51,7 @@ export class BootScene extends Phaser.Scene {
     buildParticleTexture(this);
     buildBackgroundTile(this);
     buildBackgroundOverlay(this);
+    buildBossTextures(this);
 
     let stageIndex = 0;
     let hasStoredIndex = false;

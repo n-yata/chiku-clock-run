@@ -49,7 +49,13 @@ export const TEX_KEY = {
   /** ゲーム背景タイル（ワークショップの夜景シルエット）。 */
   bgTile: 'bg_tile',
   /** 背景の明暗・ビネット・暖色グローを重ねる非タイルのオーバーレイ。 */
-  bgOverlay: 'bg_overlay'
+  bgOverlay: 'bg_overlay',
+  /** ボス: 振り子の錘（真鍮の大歯車）。実寸ぴったり生成（D-001）。 */
+  bossBob: 'boss_bob',
+  /** ボス: 落下歯車（gear rain）。実寸ぴったり生成（D-001）。 */
+  bossGear: 'boss_gear',
+  /** ボス: 弱点コア（光る歯車）。実寸ぴったり生成（D-001）。 */
+  bossCore: 'boss_core'
 } as const;
 
 export const ANIM_KEY = {
@@ -468,3 +474,102 @@ export const ENDING_GEAR_PREFIX   = '集めた歯車';
 export const ENDING_SKIP_PROMPT   = 'タップ / キーでスキップ';
 export const ENDING_TITLE_COLOR   = '#fff0b0';
 export const ENDING_SUBTITLE_COLOR = '#ffe6a0';
+
+// =====================================================================
+// 最後のボス「グランドファーザー」(20260602-final-boss)
+// stage03 クリア後に専用 BossScene で戦う振り子の大時計。
+// 可動物（振り子の錘・弱点コア・落下歯車）は新規 PNG を増やさず
+// 既存 TEX_KEY.gearBit を流用する（tint/サイズで描き分け）。
+// =====================================================================
+
+// --- ボス共通 ---
+/** ボスの HP（弱点コアを踏める回数）。0 で撃破。 */
+export const BOSS_MAX_HP = 3;
+/** 登場演出の長さ (ms)。この間は攻撃しない。 */
+export const BOSS_INTRO_MS = 1500;
+/** 攻撃フェーズ（振り子 + 歯車落下）の長さ (ms)。経過で弱点露出へ移行。 */
+export const BOSS_ATTACK_MS = 5000;
+/** 弱点露出フェーズの長さ (ms)。経過 or 被弾で攻撃へ戻る。 */
+export const BOSS_VULN_MS = 3500;
+/** 撃破時の画面シェイク (ms) と強度。 */
+export const BOSS_DEFEAT_SHAKE_MS = 700;
+export const BOSS_DEFEAT_SHAKE_INTENSITY = 0.02;
+/** 撃破演出からエンディング遷移までの待ち (ms)。 */
+export const BOSS_DEFEAT_TO_ENDING_MS = 2600;
+
+// --- アリーナ（プログラム生成。STAGES には含めない） ---
+/** アリーナの横タイル数（TILE_SIZE 基準）。 */
+export const BOSS_ARENA_COLS = 30;
+/** アリーナの縦タイル数。床は最下段、左右端は壁。 */
+export const BOSS_ARENA_ROWS = 17;
+/** プレイヤー初期スポーン列。 */
+export const BOSS_SPAWN_COL = 3;
+
+// --- 振り子（床を薙ぐスイープ攻撃） ---
+/** 支点の Y 座標 (px, ワールド)。大時計の中心付近から吊る。 */
+export const BOSS_PENDULUM_PIVOT_Y = 120;
+/** 振り子の腕の長さ (px)。錘が床手前まで届く。 */
+export const BOSS_PENDULUM_LENGTH = 330;
+/** 振れ角の振幅 (rad)。±この角度まで振れる。 */
+export const BOSS_PENDULUM_AMP_RAD = 0.95;
+/** フェーズ別の角速度 (rad/ms)。index = 受けたダメージ数（0,1,2 で加速）。 */
+export const BOSS_PENDULUM_OMEGA_BY_PHASE: ReadonlyArray<number> = [0.0022, 0.0028, 0.0034];
+/** 錘の表示半径 (px)。 */
+export const BOSS_PENDULUM_BOB_RADIUS = 26;
+/** 錘の当たり判定の直径 (px)。見た目より小さく絞って理不尽な被弾を防ぐ。 */
+export const BOSS_PENDULUM_BOB_BODY = 30;
+
+// --- 落下歯車（gear rain） ---
+/** 歯車を落とす間隔 (ms)。attack 中のみ。 */
+export const BOSS_GEAR_RAIN_INTERVAL_MS = 850;
+/** 同時に存在できる落下歯車の上限（リーク/負荷防止）。 */
+export const BOSS_GEAR_RAIN_MAX = 6;
+/** 落下歯車の表示サイズ（一辺 px）。 */
+export const BOSS_GEAR_RAIN_SIZE = 28;
+/** 落下歯車の当たり判定の直径 (px)。 */
+export const BOSS_GEAR_RAIN_BODY = 22;
+/** 落下歯車の初期落下速度 (px/s)。以降は重力で加速。 */
+export const BOSS_GEAR_RAIN_VY = 120;
+
+// --- 弱点コア（踏みつけ対象） ---
+/** 弱点コアの表示サイズ（一辺 px）。 */
+export const BOSS_CORE_SIZE = 46;
+/** 弱点コアの当たり判定の直径 (px)。 */
+export const BOSS_CORE_BODY = 40;
+/** 格納時（attack 中）の Y 座標 (px)。大時計の内部に隠れる。 */
+export const BOSS_CORE_HIDDEN_Y = 150;
+/** 露出時（vulnerable 中）の Y 座標 (px)。踏める高さまで降下する。 */
+export const BOSS_CORE_EXPOSED_Y = 430;
+/** 露出/格納の昇降にかける時間 (ms)。 */
+export const BOSS_CORE_MOVE_MS = 600;
+/** 露出時の脈動（スケール yoyo）の周期 (ms)。 */
+export const BOSS_CORE_PULSE_MS = 480;
+/** 弱点コアの tint（露出時に光る金）。 */
+export const BOSS_CORE_TINT = 0xffd24a;
+
+// --- ボス本体（大時計）描画色 ---
+export const BOSS_CLOCK_BRASS      = 0xc9973a; // 真鍮の枠
+export const BOSS_CLOCK_BRASS_DARK = 0x7a5420; // 真鍮の陰
+export const BOSS_CLOCK_FACE       = 0x1a1320; // 文字盤（沈んだ暗色＝敵対的）
+export const BOSS_CLOCK_FACE_GLOW  = 0xff4530; // 文字盤の赤い眼光
+export const BOSS_CLOCK_HAND       = 0xffd24a; // 針
+/** 大時計の文字盤中心の Y 座標 (px)。支点よりやや下。 */
+export const BOSS_CLOCK_FACE_Y = 150;
+/** 大時計の文字盤の半径 (px)。 */
+export const BOSS_CLOCK_FACE_RADIUS = 78;
+
+// --- ボス HP バー（画面上部中央） ---
+export const BOSS_HP_BAR_W = 300;          // バー全幅（スクリーン px）
+export const BOSS_HP_BAR_H = 18;           // バー高さ
+export const BOSS_HP_BAR_Y = 16;           // 画面上端からの Y
+export const BOSS_HP_BAR_BG_COLOR = 0x10243a;
+export const BOSS_HP_BAR_BG_ALPHA = 0.7;
+export const BOSS_HP_BAR_FILL_COLOR = 0xff4530;
+export const BOSS_HP_BAR_BORDER_COLOR = 0xc9973a;
+export const BOSS_HP_BAR_SEG_GAP = 4;      // セグメント間の隙間
+export const BOSS_HP_BAR_LABEL = 'GRANDFATHER';
+export const BOSS_HP_BAR_LABEL_COLOR = '#ffe6a0';
+
+// --- ボス戦の文言 ---
+export const BOSS_INTRO_TEXT = '大時計の番人 グランドファーザー';
+export const BOSS_INTRO_TEXT_COLOR = '#ffd24a';

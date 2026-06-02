@@ -21,7 +21,10 @@ graph LR
     B -->|通常起動| T[TitleScene]
     B -->|リロード復帰| G[GameScene]
     T -->|SPACE / Enter / Tap| G
-    G -->|全クリア後自動| T
+    G -->|最終ステージクリア| BO[BossScene]
+    BO -->|ボス撃破| E[EndingScene]
+    BO -->|ゲームオーバー| T
+    E -->|演出完了後自動| T
 ```
 
 ```
@@ -101,7 +104,8 @@ sequenceDiagram
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
 | BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・背景の Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
 | TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
-| GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する |
+| GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する。最終ステージクリア時は `BossScene` へ遷移 |
+| BossScene | `src/scenes/BossScene.ts` | ラスボス戦シーン。固定アリーナをプログラム生成し、`BossController`（振り子の大時計「グランドファーザー」）と `BossHpBar` を統合。弱点コアの踏みつけで撃破し `EndingScene` へ遷移。被弾・ライフ・ゲームオーバーは GameScene と同方式 |
 | マネージャ群 | `src/game/` | `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler` の 8 クラス。プレーンクラス（Scene 非継承）として scene を受け取り責務を実行する |
 | ゲーム定数 | `src/config/gameConfig.ts` | 物理・寸法・閾値・色・テクスチャキー・HUD スタイル・タイトル画面定数の単一集約点。マジックナンバー禁止 |
 | ステージ定義 | `src/stages/` | `StageDefinition` 型のステージデータ（`stage01.ts` / `stage02.ts` / `stage03.ts`）と `index.ts`（`STAGES` 配列・`getStage` / `nextStageIndex`） |
@@ -217,9 +221,14 @@ stateDiagram-v2
     Playing --> Missed : 敵横・下接触 / 落下（y > FALL_THRESHOLD_Y）
     Missed --> Playing : MISS_FLASH_MS 後 scene.restart（同ステージ）
     Cleared --> Playing : 次ステージへ fadeOut → scene.restart
-    Cleared --> Title : 全クリア → ALL_CLEAR_TO_TITLE_DELAY_MS 後 scene.start('TitleScene')
+    Cleared --> Boss : 最終ステージクリア → scene.start('BossScene')（歯車通算・ライフ引き継ぎ）
+    Boss --> Ending : ボス撃破 → scene.start('EndingScene')
+    Boss --> Title : ライフ 0（ゲームオーバー）→ scene.start('TitleScene')
+    Ending --> Title : 演出完了後自動 → scene.start('TitleScene')
     Playing --> Playing : R キー（同ステージを再起動）
 ```
+
+ボス戦（`BossScene`）の状態遷移は別途 `BossController` の状態機械（`intro` → `attack` ⇄ `vulnerable` → `defeated`）が駆動する。`attack` は振り子スイープ + 落下歯車、`vulnerable` は弱点コアの露出で、コアを 3 回踏みつけると `defeated` → `EndingScene` へ遷移する。
 
 - `isCleared` / `isMissed` フラグが立った後は `update()` でプレイヤー速度を 0 に固定
 - ミス時はプレイヤーを白くフラッシュ（`MISS_FLASH_COLOR`）し `MISS_FLASH_MS` 後に同ステージを再起動

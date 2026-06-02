@@ -13,7 +13,11 @@ export const GameEvents = {
   /** 歯車片取得。payload: 取得座標 {x,y}。 */
   GearCollected: 'gear:collected',
   /** ゴール到達。payload: ゴール座標 {x,y}。 */
-  Goal: 'goal'
+  Goal: 'goal',
+  /** ボスの HP 変化。payload: { hp, max }。 */
+  BossHpChanged: 'boss:hp',
+  /** ボス撃破。payload: 撃破座標 {x,y}。 */
+  BossDefeated: 'boss:defeated'
 } as const;
 
 export type GameEvent = typeof GameEvents[keyof typeof GameEvents];
