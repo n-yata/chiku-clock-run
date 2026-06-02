@@ -528,8 +528,9 @@ export const BOSS_PENDULUM_PIVOT_Y = 120;
 export const BOSS_PENDULUM_LENGTH = 330;
 /** 振れ角の振幅 (rad)。±この角度まで振れる。 */
 export const BOSS_PENDULUM_AMP_RAD = 0.95;
-/** フェーズ別の角速度 (rad/ms)。index = 受けたダメージ数（0,1,2 で加速）。 */
-export const BOSS_PENDULUM_OMEGA_BY_PHASE: ReadonlyArray<number> = [0.0022, 0.0028, 0.0034];
+/** フェーズ別の角速度 (rad/ms)。index = 受けたダメージ数（0,1,2 で加速）。
+ *  振り子踏み方式は速いと踏むタイミングが取りづらいため、難易度を下げて緩やかにしている（20260603 調整）。 */
+export const BOSS_PENDULUM_OMEGA_BY_PHASE: ReadonlyArray<number> = [0.0016, 0.0020, 0.0024];
 /** 錘の表示半径 (px)。 */
 export const BOSS_PENDULUM_BOB_RADIUS = 26;
 /** 錘の当たり判定の直径 (px)。見た目より小さく絞って理不尽な被弾を防ぐ。 */

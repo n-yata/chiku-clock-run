@@ -229,7 +229,10 @@ export class BossScene extends Phaser.Scene {
 
     this.events.once('shutdown', () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.layoutView, this);
-      this.physics.world.timeScale = 1; // スロー演出中の遷移に備えて必ず復帰
+      // スロー演出中の遷移に備えて復帰。ただし shutdown 時点では Arcade physics プラグインが
+      // 先に world を破棄して null にしているケースがあり、その場合の代入は例外（ループ停止）になる。
+      // 各シーンは独立した world を持つためリークの実害は無く、存在するときのみ安全に戻す。
+      if (this.physics?.world) this.physics.world.timeScale = 1;
       this.audio.destroy();
       this.touch.destroy();
       this.powerUps.destroy();
