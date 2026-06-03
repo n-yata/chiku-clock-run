@@ -32,7 +32,6 @@ import {
   ENDING_SKIP_PROMPT,
   ENDING_TITLE_COLOR,
   ENDING_SUBTITLE_COLOR,
-  ALL_CLEAR_SUFFIX,
   ANIM_KEY
 } from '../config/gameConfig';
 import { AudioManager } from '../audio/AudioManager';
@@ -51,12 +50,14 @@ interface GearSpec {
   spinMs: number;   // 1 回転にかける時間（小さいほど速い）
   dir: 1 | -1;      // 回転方向
 }
+// 歯車は時計の「外周」に配置し、文字盤・針を覆わないようにする（中心からの距離 ≳ CLOCK_RADIUS）。
+// 中央の大歯車は時計を隠すため撤去。各歯車は外周にはみ出して「時計まわりのコグ」として見える。
 const GEAR_SPECS: ReadonlyArray<GearSpec> = [
-  { dx: 0,    dy: 0,    radius: 30, teeth: 10, spinMs: 9000,  dir: 1 },
-  { dx: -64,  dy: -36,  radius: 22, teeth: 8,  spinMs: 6500,  dir: -1 },
-  { dx: 60,   dy: -44,  radius: 18, teeth: 8,  spinMs: 5200,  dir: 1 },
-  { dx: 54,   dy: 40,   radius: 16, teeth: 7,  spinMs: 4200,  dir: -1 },
-  { dx: -56,  dy: 44,   radius: 14, teeth: 7,  spinMs: 3600,  dir: 1 }
+  { dx: -82,  dy: -56,  radius: 24, teeth: 9, spinMs: 7000,  dir: -1 },
+  { dx: 86,   dy: -48,  radius: 20, teeth: 8, spinMs: 5600,  dir: 1 },
+  { dx: 76,   dy: 66,   radius: 18, teeth: 8, spinMs: 4600,  dir: -1 },
+  { dx: -72,  dy: 70,   radius: 16, teeth: 7, spinMs: 4000,  dir: 1 },
+  { dx: 6,    dy: -100, radius: 16, teeth: 7, spinMs: 3400,  dir: -1 }
 ];
 
 /**
@@ -83,7 +84,6 @@ export class EndingScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
   private subtitleText!: Phaser.GameObjects.Text;
   private gearText!: Phaser.GameObjects.Text;
-  private suffixText!: Phaser.GameObjects.Text;
   private skipText!: Phaser.GameObjects.Text;
 
   private audio!: AudioManager;
@@ -142,15 +142,19 @@ export class EndingScene extends Phaser.Scene {
     this.buildClockFace(this.clockFaceNight, ENDING_CLOCK_FACE_NIGHT);
     this.buildClockFace(this.clockFaceDay, ENDING_CLOCK_FACE_DAY);
     this.buildClockHands();
-    this.stageGroup.add([this.clockFaceNight, this.clockFaceDay, this.clockHour, this.clockMin]);
+    // 文字盤を最背面に。歯車は外周配置だが、針は必ず最前面に来るよう後で add する。
+    this.stageGroup.add([this.clockFaceNight, this.clockFaceDay]);
 
-    // 歯車（初期は不可視・縮小。歯車組み込みフェーズで pop してくる）。
+    // 歯車（初期は不可視・縮小。歯車組み込みフェーズで pop してくる）。文字盤の上・針の下。
     GEAR_SPECS.forEach((spec) => {
       const g = this.add.graphics().setPosition(spec.dx, spec.dy).setAlpha(0).setScale(0.1);
       this.drawGear(g, spec.radius, spec.teeth, ENDING_GEAR_COLOR, ENDING_GEAR_DARK);
       this.gears.push(g);
       this.stageGroup.add(g);
     });
+
+    // 針を最前面へ（歯車が外周で多少重なっても時計が読めるようにする）。
+    this.stageGroup.add([this.clockHour, this.clockMin]);
 
     // --- チク（ハッピーエンドで登場）---
     this.chiku = this.add.sprite(0, 0, TEX_KEY.playerSheet, 'idle').setDepth(5).setAlpha(0);
@@ -181,15 +185,6 @@ export class EndingScene extends Phaser.Scene {
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 5,
-      align: 'center'
-    }).setOrigin(0.5).setDepth(60).setAlpha(0);
-
-    this.suffixText = this.add.text(0, 0, ALL_CLEAR_SUFFIX, {
-      fontFamily: UI_FONT_FAMILY,
-      fontSize: '18px',
-      color: '#d8c89a',
-      stroke: '#000000',
-      strokeThickness: 4,
       align: 'center'
     }).setOrigin(0.5).setDepth(60).setAlpha(0);
 
@@ -320,7 +315,6 @@ export class EndingScene extends Phaser.Scene {
     this.tweens.add({ targets: this.titleText, alpha: 1, duration: 600, ease: 'Quad.easeOut' });
     this.tweens.add({ targets: this.subtitleText, alpha: 1, delay: 250, duration: 600 });
     this.tweens.add({ targets: this.gearText, alpha: 1, delay: 450, duration: 600 });
-    this.tweens.add({ targets: this.suffixText, alpha: 0.9, delay: 700, duration: 600 });
 
     // 祝祭バースト（時計まわりとチクの周辺）。
     const cx = this.scale.width / 2;
@@ -402,8 +396,7 @@ export class EndingScene extends Phaser.Scene {
     // テキスト。
     this.titleText.setPosition(cx, H * 0.16);
     this.subtitleText.setPosition(cx, H * 0.16 + 56);
-    this.gearText.setPosition(cx, H * 0.86);
-    this.suffixText.setPosition(cx, H * 0.92);
+    this.gearText.setPosition(cx, H * 0.88);
     this.skipText.setPosition(W - 16, H - 16).setOrigin(1, 1);
   }
 

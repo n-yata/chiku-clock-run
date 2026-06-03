@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { INITIAL_LIVES } from '../config/gameConfig';
+import { STAGES } from '../stages/index';
 
 const BRASS   = 0xc9973a;
 const BRASS_D = 0x7a5420;
@@ -22,8 +23,30 @@ export class TitleScene extends Phaser.Scene {
   private promptText!: Phaser.GameObjects.Text;
   private isStarting = false;
 
+  /** コンティニュー地点。undefined=最初から。0..STAGES.length-1=通常ステージ、STAGES.length=ボス戦。 */
+  private continueStage: number | undefined = undefined;
+  private continueGearsCollected = 0;
+  private continueGearsTotal = 0;
+
   constructor() {
     super('TitleScene');
+  }
+
+  /**
+   * ゲームオーバー復帰時にコンティニュー地点と通算歯車を受け取る。
+   * 値が無い（最初から / 全クリア後）場合は通常の「最初から」になる。
+   */
+  init(data?: { continueStage?: number; gearsCollected?: number; gearsTotal?: number }): void {
+    const cs = Number(data?.continueStage);
+    this.continueStage = Number.isFinite(cs) && cs >= 0 && cs <= STAGES.length ? Math.floor(cs) : undefined;
+    const gc = Number(data?.gearsCollected);
+    const gt = Number(data?.gearsTotal);
+    this.continueGearsCollected = Number.isFinite(gc) && gc >= 0 ? Math.floor(gc) : 0;
+    this.continueGearsTotal = Number.isFinite(gt) && gt >= 0 ? Math.floor(gt) : 0;
+  }
+
+  private get canContinue(): boolean {
+    return this.continueStage !== undefined;
   }
 
   create(): void {
@@ -82,7 +105,8 @@ export class TitleScene extends Phaser.Scene {
       fontStyle: 'italic',
     }).setOrigin(0.5);
 
-    this.promptText = this.add.text(0, 0, '⚙  SPACE / TAP TO START  ⚙', {
+    const promptLabel = this.canContinue ? '⚙  SPACE / TAP TO CONTINUE  ⚙' : '⚙  SPACE / TAP TO START  ⚙';
+    this.promptText = this.add.text(0, 0, promptLabel, {
       fontFamily: 'monospace, "Courier New", sans-serif',
       fontSize: '22px',
       color: '#ffd080',
@@ -295,7 +319,22 @@ export class TitleScene extends Phaser.Scene {
     this.isStarting = true;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.launch('GameScene', { stageIndex: 0, lives: INITIAL_LIVES });
+      if (this.continueStage !== undefined && this.continueStage >= STAGES.length) {
+        // ボス戦から再開（歯車数を保持）。
+        this.scene.launch('BossScene', {
+          lives: INITIAL_LIVES,
+          gearsCollected: this.continueGearsCollected,
+          gearsTotal: this.continueGearsTotal
+        });
+      } else {
+        // 通常ステージ。コンティニューならそのステージから、無ければ最初から。
+        this.scene.launch('GameScene', {
+          stageIndex: this.continueStage ?? 0,
+          lives: INITIAL_LIVES,
+          gearsCollected: this.continueGearsCollected,
+          gearsTotal: this.continueGearsTotal
+        });
+      }
       this.scene.stop();
     });
   }

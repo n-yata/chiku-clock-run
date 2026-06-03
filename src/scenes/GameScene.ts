@@ -846,8 +846,22 @@ export class GameScene extends Phaser.Scene {
     });
     this.hud.showPrompt(PROMPT_TITLE_TEXT);
     this.audio.stopBgm(BGM_FADE_OUT_MS);
-    this.pendingAdvance = () => this.restartFromTop();
+    this.pendingAdvance = () => this.gameOverToTitle();
     this.time.delayedCall(GAME_OVER_TO_TITLE_DELAY_MS, () => this.firePendingAdvance(), [], this);
+  }
+
+  /**
+   * ゲームオーバー時にタイトルへ戻る。タイトルが「TAP TO CONTINUE」を出してこのステージから
+   * 再開できるよう、コンティニュー地点（このステージ index）と開始時点の通算歯車を引き継ぐ。
+   * 当該ステージで集めた分は再プレイで取り直しになるため priorGears を渡す。
+   */
+  private gameOverToTitle(): void {
+    this.teardownPhysics();
+    this.scene.start('TitleScene', {
+      continueStage: this.stageIndex,
+      gearsCollected: this.priorGearsCollected,
+      gearsTotal: this.priorGearsTotal
+    });
   }
 
 }

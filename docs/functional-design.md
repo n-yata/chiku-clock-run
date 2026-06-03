@@ -103,7 +103,7 @@ sequenceDiagram
 |-------------|---------|------|
 | エントリポイント | `src/main.ts` | `Phaser.Game` インスタンス生成。`gameConfig` から viewport / 重力 / 背景色を取得 |
 | BootScene | `src/scenes/BootScene.ts` | 地面・歯車片・クロックビーコンの静的画像を読み込み、探索者・障害機・背景の Canvas スプライトを生成。通常起動は `TitleScene`、リロード復帰は `GameScene` へ遷移 |
-| TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で `GameScene` へ遷移。全クリア後の自動遷移先。`Scale.RESIZE` 対応 |
+| TitleScene | `src/scenes/TitleScene.ts` | タイトルテキスト + 点滅プロンプトを画面中央に表示。SPACE / Enter / Tap で開始。`init(continueStage, gears)` を受け取り、ゲームオーバー復帰時は `TAP TO CONTINUE`（そのステージ／ボス戦から再開・歯車数保持）、最初から／全クリア後は `TAP TO START`（stage1）。`Scale.RESIZE` 対応 |
 | GameScene | `src/scenes/GameScene.ts` | ステージ構築と `src/game/` マネージャ群の生成・接続を担う薄いオーケストレーター。プレイヤー操作・カメラ・HUD・タッチ・AI・衝突・能力・パーティクルは各マネージャへ委譲。E2E ファサード（`applyPlayerState` / `handleMiss` / `player` / `lives` 等）は GameScene 上に維持する。最終ステージクリア時は `BossScene` へ遷移 |
 | BossScene | `src/scenes/BossScene.ts` | ラスボス戦シーン。固定アリーナをプログラム生成し、`BossController`（振り子の大時計「グランドファーザー」）と `BossHpBar` を統合。**振り子の錘を上から踏みつけ**て撃破し `EndingScene` へ遷移。被弾・ライフ・ゲームオーバーは GameScene と同方式 |
 | マネージャ群 | `src/game/` | `CameraController` / `HudManager` / `ParticleManager` / `TouchController` / `PlayerController` / `EnemyManager` / `PowerUpManager` / `CollisionHandler` の 8 クラス。プレーンクラス（Scene 非継承）として scene を受け取り責務を実行する |
@@ -225,8 +225,8 @@ stateDiagram-v2
     Cleared --> Playing : 次ステージへ fadeOut → scene.restart
     Cleared --> Boss : 最終ステージクリア → scene.start('BossScene')（歯車通算・ライフ引き継ぎ）
     Boss --> Ending : ボス撃破 → scene.start('EndingScene')
-    Boss --> Title : ライフ 0（ゲームオーバー）→ scene.start('TitleScene')
-    Ending --> Title : 演出完了後自動 → scene.start('TitleScene')
+    Boss --> Title : ライフ 0（ゲームオーバー）→ scene.start('TitleScene', { continueStage: ボス番兵, gears })
+    Ending --> Title : 演出完了後自動 → scene.start('TitleScene')（continue 無し＝TAP TO START）
     Playing --> Playing : R キー（同ステージを再起動）
 ```
 

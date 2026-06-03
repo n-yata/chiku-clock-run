@@ -571,7 +571,13 @@ export class BossScene extends Phaser.Scene {
 
   private restartFromTop(): void {
     this.teardownPhysics();
-    this.scene.start('TitleScene');
+    // ゲームオーバー時はタイトルが「TAP TO CONTINUE」を出してボス戦から再開できるよう、
+    // ボス番兵（STAGE_LIST.length）と通算歯車を引き継ぐ。
+    this.scene.start('TitleScene', {
+      continueStage: STAGE_LIST.length,
+      gearsCollected: this.gearsCollected,
+      gearsTotal: this.gearsTotal
+    });
   }
 
   private showIntroBanner(): void {
