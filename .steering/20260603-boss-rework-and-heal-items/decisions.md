@@ -1,5 +1,13 @@
 # 決定事項ログ
 
+## 2026-06-03 追補2（コア残骸の削除）
+
+旧「弱点コア露出」方式のデッドコードを完全撤去（当初は spriteSheets が参照するため残置としていたが、
+不要と判断）。削除対象: `TEX_KEY.bossCore` / `BOSS_CORE_*` 定数 / `BOSS_VULN_MS` / `spriteSheets.buildBossTextures`
+の bossCore 生成ブロックと `BOSS_CORE_SIZE` import。BossController/BossScene に参照は元々無し。
+typecheck/build 緑・実機スクショでボス戦正常を確認。
+→ 本ログ内 D-001/spriteSheets の「残置」記述は本追補で解消済み。
+
 ## 2026-06-03 追補（リリース後フィードバック対応）
 
 シャビのプレイフィードバックを受けて3点を修正。

@@ -16,7 +16,7 @@ import {
   PARTICLE_DOT_SIZE,
   HEAL_ITEM_SPRITE_W, HEAL_ITEM_SPRITE_H,
   HEAL_ITEM_BRASS_COLOR, HEAL_ITEM_HEART_COLOR, HEAL_ITEM_HEART_GLOW,
-  BOSS_PENDULUM_BOB_RADIUS, BOSS_GEAR_RAIN_SIZE, BOSS_CORE_SIZE,
+  BOSS_PENDULUM_BOB_RADIUS, BOSS_GEAR_RAIN_SIZE,
   BOSS_CLOCK_BRASS, BOSS_CLOCK_BRASS_DARK
 } from '../config/gameConfig';
 
@@ -1209,7 +1209,7 @@ function buildSquareTexture(scene: Phaser.Scene, key: string, size: number, draw
   }
 }
 
-/** ボスの可動物テクスチャ（錘・落下歯車・弱点コア）をまとめて生成する。 */
+/** ボスの可動物テクスチャ（錘・落下歯車）をまとめて生成する。 */
 export function buildBossTextures(scene: Phaser.Scene): void {
   const brassLight = shade(BOSS_CLOCK_BRASS, 1.3);
   const brassMid = toHex(BOSS_CLOCK_BRASS);
@@ -1223,22 +1223,6 @@ export function buildBossTextures(scene: Phaser.Scene): void {
   // 落下歯車（小ぶりの真鍮歯車）
   buildSquareTexture(scene, TEX_KEY.bossGear, BOSS_GEAR_RAIN_SIZE, (ctx) => {
     drawCenteredGear(ctx, BOSS_GEAR_RAIN_SIZE, 8, brassLight, brassDark, brassDark, brassMid);
-  });
-
-  // 弱点コア（白めの歯車。tint=BOSS_CORE_TINT を controller で掛けて光らせる）
-  buildSquareTexture(scene, TEX_KEY.bossCore, BOSS_CORE_SIZE, (ctx) => {
-    const size = BOSS_CORE_SIZE;
-    const c = size / 2;
-    // 外周の光彩
-    const glow = ctx.createRadialGradient(c, c, size * 0.18, c, c, c);
-    glow.addColorStop(0, 'rgba(255,255,255,0.9)');
-    glow.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
-    drawCenteredGear(ctx, size, 9, '#ffffff', '#d9d0c0', '#9a8c6c', '#fff3d0');
-    // 中心の発光コア
-    ctx.beginPath(); ctx.arc(c, c, size * 0.16, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff7e0'; ctx.fill();
   });
 }
 

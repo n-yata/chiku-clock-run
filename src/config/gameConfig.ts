@@ -55,9 +55,7 @@ export const TEX_KEY = {
   /** ボス: 振り子の錘（真鍮の大歯車）。実寸ぴったり生成（D-001）。 */
   bossBob: 'boss_bob',
   /** ボス: 落下歯車（gear rain）。実寸ぴったり生成（D-001）。 */
-  bossGear: 'boss_gear',
-  /** ボス: 弱点コア（光る歯車）。実寸ぴったり生成（D-001）。 */
-  bossCore: 'boss_core'
+  bossGear: 'boss_gear'
 } as const;
 
 export const ANIM_KEY = {
@@ -500,11 +498,8 @@ export const ENDING_SUBTITLE_COLOR = '#ffe6a0';
 export const BOSS_MAX_HP = 3;
 /** 登場演出の長さ (ms)。この間は攻撃しない。 */
 export const BOSS_INTRO_MS = 1500;
-/** 攻撃フェーズ（振り子 + 歯車落下）の長さ (ms)。経過で弱点露出へ移行。 */
+/** 攻撃フェーズ（振り子 + 歯車落下）の長さ (ms)。振り子の錘を上から踏むとダメージが入る。 */
 export const BOSS_ATTACK_MS = 5000;
-/** 弱点露出フェーズの長さ (ms)。経過 or 被弾で攻撃へ戻る。
- *  ※踏みつけ対象を振り子へ変更（20260603）したため現在は未使用。互換のため残置。 */
-export const BOSS_VULN_MS = 3500;
 /** 踏み成功直後のよろけ（stagger）の長さ (ms)。この間は振り子の当たり判定を無効化し再ヒット不可。 */
 export const BOSS_STAGGER_MS = 1000;
 /** 撃破時の画面シェイク (ms) と強度。 */
@@ -547,22 +542,6 @@ export const BOSS_GEAR_RAIN_SIZE = 28;
 export const BOSS_GEAR_RAIN_BODY = 22;
 /** 落下歯車の初期落下速度 (px/s)。以降は重力で加速。 */
 export const BOSS_GEAR_RAIN_VY = 120;
-
-// --- 弱点コア（踏みつけ対象） ---
-/** 弱点コアの表示サイズ（一辺 px）。 */
-export const BOSS_CORE_SIZE = 46;
-/** 弱点コアの当たり判定の直径 (px)。 */
-export const BOSS_CORE_BODY = 40;
-/** 格納時（attack 中）の Y 座標 (px)。大時計の内部に隠れる。 */
-export const BOSS_CORE_HIDDEN_Y = 150;
-/** 露出時（vulnerable 中）の Y 座標 (px)。踏める高さまで降下する。 */
-export const BOSS_CORE_EXPOSED_Y = 430;
-/** 露出/格納の昇降にかける時間 (ms)。 */
-export const BOSS_CORE_MOVE_MS = 600;
-/** 露出時の脈動（スケール yoyo）の周期 (ms)。 */
-export const BOSS_CORE_PULSE_MS = 480;
-/** 弱点コアの tint（露出時に光る金）。 */
-export const BOSS_CORE_TINT = 0xffd24a;
 
 // --- ボス本体（大時計）描画色 ---
 export const BOSS_CLOCK_BRASS      = 0xc9973a; // 真鍮の枠
